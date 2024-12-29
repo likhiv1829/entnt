@@ -1,85 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { getCompanies, createCompany, updateCompany, deleteCompany } from '../../utils/api'; // Import API functions
-import './AdminDashboard.css';
+import { getCompanies, createCompany, updateCompany, deleteCompany } from '../../utils/api'; // Adjust the path if necessary
 
 const CompanyManagement = () => {
   const [companies, setCompanies] = useState([]);
   const [newCompany, setNewCompany] = useState({
+    _id: '',
     name: '',
     location: '',
     linkedInProfile: '',
     emails: '',
     phoneNumbers: '',
     comments: '',
-    communicationPeriodicity: 14, // Default 14 days
+    communicationPeriodicity: 14,
   });
-  const [error, setError] = useState(''); // State to handle error messages
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Fetch existing companies using the API function
     getCompanies()
       .then(data => setCompanies(data))
       .catch(err => {
-        console.error('Error fetching companies:', err);
+        console.error('Error fetching companies:', err.message);
         setError('Failed to fetch companies. Please try again later.');
       });
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNewCompany({ ...newCompany, [name]: value });
+    setNewCompany(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Basic validation: Check if required fields are filled
-    if (!newCompany.name || !newCompany.location || !newCompany.emails) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-    setError(''); // Clear any previous errors
-
-    createCompany(newCompany)
-      .then(data => {
-        setCompanies([...companies, data]);
-        setNewCompany({
-          name: '',
-          location: '',
-          linkedInProfile: '',
-          emails: '',
-          phoneNumbers: '',
-          comments: '',
-          communicationPeriodicity: 14,
-        });
-      })
-      .catch(err => {
-        setError('Failed to add company. Please try again later.');
-      });
-  };
-
-  const handleUpdate = (companyId) => {
-    const companyToUpdate = companies.find(company => company._id === companyId);
-    if (companyToUpdate) {
+    try {
+      if (newCompany._id) {
+        await updateCompany(newCompany._id, newCompany);
+      } else {
+        await createCompany(newCompany);
+      }
+      const updatedCompanies = await getCompanies();
+      setCompanies(updatedCompanies);
       setNewCompany({
-        name: companyToUpdate.name,
-        location: companyToUpdate.location,
-        linkedInProfile: companyToUpdate.linkedInProfile,
-        emails: companyToUpdate.emails,
-        phoneNumbers: companyToUpdate.phoneNumbers,
-        comments: companyToUpdate.comments,
-        communicationPeriodicity: companyToUpdate.communicationPeriodicity,
+        _id: '',
+        name: '',
+        location: '',
+        linkedInProfile: '',
+        emails: '',
+        phoneNumbers: '',
+        comments: '',
+        communicationPeriodicity: 14,
       });
+    } catch (err) {
+      console.error('Error saving company:', err.message);
+      setError('Failed to save company. Please try again later.');
     }
   };
 
-  const handleDelete = (companyId) => {
-    deleteCompany(companyId)
-      .then(() => {
-        setCompanies(companies.filter(company => company._id !== companyId));
-      })
-      .catch(err => {
-        setError('Failed to delete company. Please try again later.');
-      });
+  const handleUpdate = (id) => {
+    const company = companies.find(c => c._id === id);
+    setNewCompany(company);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteCompany(id);
+      const updatedCompanies = await getCompanies();
+      setCompanies(updatedCompanies);
+    } catch (err) {
+      console.error('Error deleting company:', err.message);
+      setError('Failed to delete company. Please try again later.');
+    }
   };
 
   return (
@@ -132,18 +124,20 @@ const CompanyManagement = () => {
           name="communicationPeriodicity"
           value={newCompany.communicationPeriodicity}
           onChange={handleChange}
-          placeholder="Communication Periodicity (days)"
+          placeholder="Communication Periodicity"
         />
-        <button type="submit">Add Company</button>
+        <button type="submit">{newCompany._id ? 'Update Company' : 'Add Company'}</button>
       </form>
 
-      {error && <p className="error">{error}</p>} {/* Display error message if exists */}
+      {error && <p className="error">{error}</p>}
 
       <h3>Existing Companies</h3>
       <ul>
         {companies.map((company) => (
           <li key={company._id}>
-            {company.name} - {company.location}
+            <h4>{company.name} - {company.location}</h4>
+            <p>{company.linkedInProfile}</p>
+            <p>{company.emails}</p>
             <button onClick={() => handleUpdate(company._id)}>Update</button>
             <button onClick={() => handleDelete(company._id)}>Delete</button>
           </li>

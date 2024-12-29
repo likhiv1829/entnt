@@ -1,10 +1,8 @@
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 
-// MongoDB connection string (no need for useNewUrlParser and useUnifiedTopology)
-mongoose.connect('mongodb://localhost:27017/your-database')
-  .then(() => {
-    console.log('Database connected');
-  })
-  .catch((error) => {
-    console.error('Database connection error:', error);
-  });
+dotenv.config();
+
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.log('Database connection error: ', err));

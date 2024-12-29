@@ -12,44 +12,28 @@ const getCompanies = async (req, res) => {
 
 // Add a company
 const addCompany = async (req, res) => {
-    const {
-        name,
-        industry,
-        location = '', // Default empty string if not provided
-        linkedin = '',
-        emails = [], // Default empty array if not provided
-        phoneNumbers = [],
-        comments = '',
-        communicationPeriodicity = 'Monthly', // Default periodicity
-    } = req.body;
-
     try {
-        // Validate required fields
-        if (!name || !industry) {
-            return res.status(400).json({ message: 'Name and industry are required.' });
+        const { name, address, phone } = req.body;
+
+        // Validate input
+        if (!name || !address || !phone) {
+            return res.status(400).json({ message: 'All fields are required' });
         }
 
-        // Create a new company instance
-        const company = new Company({
+        const newCompany = new Company({
             name,
-            industry,
-            location,
-            linkedin,
-            emails,
-            phoneNumbers,
-            comments,
-            communicationPeriodicity,
+            address,
+            phone
         });
 
-        // Save the company to the database
-        await company.save();
-
-        // Respond with the created company
-        res.status(201).json(company);
+        const savedCompany = await newCompany.save();
+        res.status(201).json(savedCompany);
     } catch (err) {
-        console.error('Error adding company:', err);
-        res.status(400).json({ message: err.message });
+        res.status(500).json({ message: err.message });
     }
 };
 
-module.exports = { getCompanies, addCompany };
+module.exports = {
+    getCompanies,
+    addCompany
+};

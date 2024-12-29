@@ -34,6 +34,7 @@
     flex-wrap: wrap;
     gap: 20px;
     padding: 20px;
+    flex-grow: 1; /* Make the content grow to fill available space */
 }
 
 /* Sidebar */
@@ -43,6 +44,10 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
     width: 300px;
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 60px); /* Ensure sidebar stays within viewport height */
+    overflow-y: auto; /* Enable scrolling if content overflows */
 }
 
 .dashboard-sidebar h2 {
@@ -92,12 +97,18 @@
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
+    max-height: calc(100vh - 60px); /* Ensure notifications stay within viewport height */
+    overflow-y: auto; /* Enable scrolling if content overflows */
 }
 
 .dashboard-notifications h2 {
     font-size: 1.4rem;
     color: #ff5722;
     margin-bottom: 15px;
+}
+
+.dashboard-notifications h3 {
+    color: #333;
 }
 
 /* Overdue and Today's Communications */
@@ -137,6 +148,8 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
     min-width: 300px;
+    max-height: calc(100vh - 60px); /* Ensure main content stays within viewport height */
+    overflow-y: auto; /* Enable scrolling if content overflows */
 }
 
 .dashboard-main h2, .dashboard-stats h2 {
@@ -245,5 +258,10 @@ li.completed:hover::after {
 
     .dashboard-sidebar, .dashboard-main, .dashboard-stats, .dashboard-notifications {
         width: 100%;
+    }
+
+    .dashboard-sidebar, .dashboard-notifications, .dashboard-main, .dashboard-stats {
+        max-height: none; /* Remove max-height for smaller screens */
+        overflow: visible; /* Allow content to expand */
     }
 }

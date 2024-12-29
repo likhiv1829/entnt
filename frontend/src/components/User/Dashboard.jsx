@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import "./Dashboard.css"; // Ensure your CSS has hover styles and highlight colors
+import { useCompanyContext } from '../../context/CompanyContext'; // Correct path
+import "./Dashboard.css";
 import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid"; // For calendar view
+import dayGridPlugin from "@fullcalendar/daygrid";
 import { Chart as ChartJS, LinearScale, CategoryScale, BarElement, Title, Tooltip, Legend } from "chart.js";
 import { Chart } from "react-chartjs-2";
 
@@ -9,27 +10,7 @@ import { Chart } from "react-chartjs-2";
 ChartJS.register(LinearScale, CategoryScale, BarElement, Title, Tooltip, Legend);
 
 const Dashboard = () => {
-  const [companies, setCompanies] = useState([
-    {
-      id: 1,
-      name: "Company A",
-      communications: [
-        { type: "LinkedIn Post", date: "2024-09-05", notes: "Meeting scheduled.", highlight: "overdue" },
-        { type: "Email", date: "2024-09-10", notes: "Follow-up needed.", highlight: "completed" },
-      ],
-      nextCommunication: { type: "Phone Call", date: "2024-10-01" },
-    },
-    {
-      id: 2,
-      name: "Company B",
-      communications: [
-        { type: "LinkedIn Post", date: "2024-09-01", notes: "Meeting scheduled.", highlight: "overdue" },
-        { type: "Email", date: "2024-09-05", notes: "Follow-up needed.", highlight: "completed" },
-      ],
-      nextCommunication: { type: "Email", date: "2024-10-02" },
-    },
-  ]);
-
+  const { companies, updateCompanyCommunication, addCompany } = useCompanyContext(); // Fetch companies and the update function from context
   const [selectedCompanies, setSelectedCompanies] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newCommunication, setNewCommunication] = useState({
@@ -37,13 +18,11 @@ const Dashboard = () => {
     date: "",
     notes: "",
   });
-
   const [notifications, setNotifications] = useState({
     overdue: [],
     dueToday: [],
   });
-
-  const [selectedCompanyId, setSelectedCompanyId] = useState(null); // To track which company is selected for viewing overdue communications
+  const [selectedCompanyId, setSelectedCompanyId] = useState(null);
 
   const [chartData, setChartData] = useState({
     labels: ["LinkedIn Post", "Email", "Phone Call", "Other"],
@@ -73,7 +52,7 @@ const Dashboard = () => {
     const overdue = [];
     const dueToday = [];
     companies.forEach((company) => {
-      company.communications.forEach((comm) => {
+      company.communications?.forEach((comm) => {
         const status = getCommunicationStatus(comm.date);
         if (status === "overdue" && comm.highlight !== "completed") {
           if (!overdue.some((c) => c.id === company.id)) overdue.push(company);
@@ -102,56 +81,46 @@ const Dashboard = () => {
   const handleModalToggle = () => setShowModal(!showModal);
 
   const handleCommunicationSubmit = () => {
-    setCompanies((prevCompanies) => {
-      const updatedCompanies = prevCompanies.map((company) => {
+    // Handle communication submission logic
+    if (newCommunication.type && newCommunication.date && newCommunication.notes) {
+      const updatedCompanies = companies.map((company) => {
         if (selectedCompanies.includes(company.id)) {
-          const updatedCommunications = [
-            ...company.communications,
-            {
-              type: newCommunication.type,
-              date: newCommunication.date,
-              notes: newCommunication.notes,
-              highlight: getCommunicationStatus(newCommunication.date),
-            },
-          ];
-          return { ...company, communications: updatedCommunications };
+          return {
+            ...company,
+            communications: [
+              ...company.communications,
+              {
+                ...newCommunication,
+                highlight: "upcoming", // Default to upcoming highlight
+              },
+            ],
+          };
         }
         return company;
       });
-      return updatedCompanies;
-    });
-    setShowModal(false); // Close modal
-    setSelectedCompanies([]); // Reset selection
+      updateCompanyCommunication(updatedCompanies); // Update companies with new communication
+      setShowModal(false);
+      setSelectedCompanies([]);
+      setNewCommunication({ type: "", date: "", notes: "" }); // Clear modal fields
+    } else {
+      alert("Please fill in all fields.");
+    }
   };
 
   const handleMarkAsCompleted = (companyId, communicationIndex) => {
-    setCompanies((prevCompanies) => {
-      const updatedCompanies = prevCompanies.map((company) => {
-        if (company.id === companyId) {
-          const updatedCommunications = [...company.communications];
-          updatedCommunications[communicationIndex].highlight = "completed"; // Mark as completed
-          return { ...company, communications: updatedCommunications };
-        }
-        return company;
-      });
-
-      // Update notifications and calendar
-      const overdue = [];
-      const dueToday = [];
-      updatedCompanies.forEach((company) => {
-        company.communications.forEach((comm) => {
-          const status = getCommunicationStatus(comm.date);
-          if (status === "overdue" && comm.highlight !== "completed") {
-            if (!overdue.some((c) => c.id === company.id)) overdue.push(company);
-          } else if (status === "dueToday") {
-            if (!dueToday.some((c) => c.id === company.id)) dueToday.push(company);
+    const updatedCompanies = companies.map((company) => {
+      if (company.id === companyId) {
+        const updatedCommunications = company.communications.map((comm, index) => {
+          if (index === communicationIndex) {
+            return { ...comm, highlight: "completed" };
           }
+          return comm;
         });
-      });
-
-      setNotifications({ overdue, dueToday });
-      return updatedCompanies;
+        return { ...company, communications: updatedCommunications };
+      }
+      return company;
     });
+    updateCompanyCommunication(updatedCompanies); // Update the communication status
   };
 
   return (
@@ -161,24 +130,30 @@ const Dashboard = () => {
       </header>
 
       <div className="dashboard-content">
+        {/* Sidebar - List of Companies */}
         <div className="dashboard-sidebar">
           <h2>Companies</h2>
           <ul>
-            {companies.map((company) => (
-              <li key={company.id}>
-                <input
-                  type="checkbox"
-                  checked={selectedCompanies.includes(company.id)}
-                  onChange={() => handleSelectCompany(company.id)}
-                />
-                {company.name}
-                <button onClick={() => setSelectedCompanyId(company.id)}>View Overdue Communications</button>
-              </li>
-            ))}
+            {companies && companies.length > 0 ? (
+              companies.map((company) => (
+                <li key={company.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCompanies.includes(company.id)}
+                    onChange={() => handleSelectCompany(company.id)}
+                  />
+                  {company.name}
+                  <button onClick={() => setSelectedCompanyId(company.id)}>View Overdue Communications</button>
+                </li>
+              ))
+            ) : (
+              <p>No companies available</p>
+            )}
           </ul>
           <button onClick={handleModalToggle}>Log Communication</button>
         </div>
 
+        {/* Notifications */}
         <div className="dashboard-notifications">
           <h2>Notifications</h2>
           <div>
@@ -207,11 +182,11 @@ const Dashboard = () => {
 
           {selectedCompanyId && (
             <div>
-              <h3>Overdue Communications for {companies.find((c) => c.id === selectedCompanyId).name}</h3>
+              <h3>Overdue Communications for {companies.find((c) => c.id === selectedCompanyId)?.name}</h3>
               <ul>
                 {companies
                   .find((c) => c.id === selectedCompanyId)
-                  .communications.filter((comm) => comm.highlight === "overdue")
+                  ?.communications?.filter((comm) => comm.highlight === "overdue")
                   .map((comm, index) => (
                     <li key={index} className="overdue">
                       <p>{comm.type} - {comm.date}</p>
@@ -226,25 +201,26 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* Calendar */}
         <div className="dashboard-main">
           <h2>Calendar</h2>
           <FullCalendar
             plugins={[dayGridPlugin]}
-            events={companies.flatMap((company) =>
-              company.communications
-                .filter((comm) => comm.highlight !== "upcoming") // Only show completed or overdue communications
+            events={companies?.flatMap((company) =>
+              company.communications?.filter((comm) => comm.highlight !== "upcoming")
                 .map((comm) => ({
                   title: `${comm.type}: ${comm.notes}`,
                   date: comm.date,
-                  backgroundColor: comm.highlight === "overdue" ? "red" : comm.highlight === "completed" ? "green" : "transparent", // Conditional color
+                  backgroundColor: comm.highlight === "overdue" ? "red" : comm.highlight === "completed" ? "green" : "transparent",
                   borderColor: "black",
                   textColor: "white",
                 }))
-            )}
+            ) || []}
             initialView="dayGridMonth"
           />
         </div>
 
+        {/* Statistics */}
         <div className="dashboard-stats">
           <h2>Statistics</h2>
           <Chart
@@ -262,6 +238,7 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Modal for Logging Communication */}
       {showModal && (
         <div className="modal">
           <div className="modal-content">
