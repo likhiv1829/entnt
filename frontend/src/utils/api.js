@@ -35,7 +35,6 @@ export const updateCompany = async (companyId, companyData) => {
   }
 };
 
-// Delete a company
 export const deleteCompany = async (companyId) => {
   try {
     const response = await axios.delete(`${BASE_URL}/companies/${companyId}`);
@@ -46,7 +45,6 @@ export const deleteCompany = async (companyId) => {
   }
 };
 
-// API calls for Communication
 export const getCommunications = async () => {
   try {
     const response = await axios.get(`${BASE_URL}/communication`, {
