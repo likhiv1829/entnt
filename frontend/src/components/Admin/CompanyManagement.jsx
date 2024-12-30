@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCompanies, createCompany, updateCompany, deleteCompany } from '../../utils/api'; // Adjust the path if necessary
+import { getCompanies, createCompany, updateCompany, deleteCompany } from '../../utils/api'; // Ensure this path is correct
 
 const CompanyManagement = () => {
   const [companies, setCompanies] = useState([]);
@@ -15,15 +15,22 @@ const CompanyManagement = () => {
   });
   const [error, setError] = useState('');
 
+  // Fetch companies when the component mounts
   useEffect(() => {
-    getCompanies()
-      .then(data => setCompanies(data))
-      .catch(err => {
-        console.error('Error fetching companies:', err.message);
+    const fetchCompanies = async () => {
+      try {
+        const data = await getCompanies();
+        setCompanies(data);
+      } catch (err) {
+        console.error('Error fetching companies:', err);
         setError('Failed to fetch companies. Please try again later.');
-      });
+      }
+    };
+
+    fetchCompanies();
   }, []);
 
+  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewCompany(prevState => ({
@@ -32,16 +39,22 @@ const CompanyManagement = () => {
     }));
   };
 
+  // Handle form submission for adding or updating companies
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (newCompany._id) {
+        // Update existing company
         await updateCompany(newCompany._id, newCompany);
       } else {
+        // Add new company
         await createCompany(newCompany);
       }
+
       const updatedCompanies = await getCompanies();
       setCompanies(updatedCompanies);
+
+      // Reset the form
       setNewCompany({
         _id: '',
         name: '',
@@ -52,24 +65,28 @@ const CompanyManagement = () => {
         comments: '',
         communicationPeriodicity: 14,
       });
+      setError('');
     } catch (err) {
-      console.error('Error saving company:', err.message);
+      console.error('Error saving company:', err);
       setError('Failed to save company. Please try again later.');
     }
   };
 
+  // Handle editing (updating) a company
   const handleUpdate = (id) => {
     const company = companies.find(c => c._id === id);
     setNewCompany(company);
   };
 
+  // Handle deleting a company
   const handleDelete = async (id) => {
     try {
-      await deleteCompany(id);
-      const updatedCompanies = await getCompanies();
-      setCompanies(updatedCompanies);
+      await deleteCompany(id); // Delete the company
+      const updatedCompanies = await getCompanies(); // Fetch updated list of companies
+      setCompanies(updatedCompanies); // Update the local state
+      setError('');
     } catch (err) {
-      console.error('Error deleting company:', err.message);
+      console.error('Error deleting company:', err);
       setError('Failed to delete company. Please try again later.');
     }
   };

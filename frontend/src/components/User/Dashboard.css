@@ -1,267 +1,89 @@
-/* Universal Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* Dashboard Container */
 .dashboard-container {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background: #f5f7fa;
-    color: #333;
+  display: flex;
+  flex-direction: column;
+  width: 100vw; /* 100% of the viewport width */
+  height: 100vh;
+  padding: 70px;
+  background: linear-gradient(to right, #74ebd5, #acb6e5);
+  overflow: auto;
 }
 
-/* Header */
 .dashboard-header {
-    background: #007bff;
-    color: white;
-    padding: 20px;
-    text-align: center;
-    font-size: 1.8rem;
-    font-weight: bold;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
-/* Main Content */
 .dashboard-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 20px;
-    flex-grow: 1; /* Make the content grow to fill available space */
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Create two columns for companies and last five communications */
+  gap: 20px; /* Add space between items */
+  margin-bottom: 30px; /* Space between sections */
 }
 
-/* Sidebar */
+.dashboard-sidebar,
+.dashboard-communications {
+  background-color: #ffffff;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
 .dashboard-sidebar {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: 300px;
-    position: sticky;
-    top: 0;
-    max-height: calc(100vh - 60px); /* Ensure sidebar stays within viewport height */
-    overflow-y: auto; /* Enable scrolling if content overflows */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.dashboard-sidebar h2 {
-    font-size: 1.4rem;
-    margin-bottom: 15px;
-    color: #007bff;
+.dashboard-communications {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.dashboard-sidebar ul {
-    list-style: none;
+.dashboard-calendar {
+  background-color: #ffffff;
+  width: 100vh;
+  height: 92vh; /* Adjust height of calendar */
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px; /* Space below calendar */
 }
 
-.dashboard-sidebar li {
-    margin: 10px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    border-radius: 5px;
-    background: #f9f9fb;
-    transition: background 0.3s;
+.dashboard-statistics {
+  background-color: #ffffff;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 10%;
+  height:20px;
 }
 
-.dashboard-sidebar li:hover {
-    background: #f1f1f5;
+.dashboard-chart {
+  flex: 1 1 300px;
+  min-width: 100%;
+  margin-top: 0px;
+  padding-top: 10px;
+  background-color: white;
 }
 
-.dashboard-sidebar button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    background: #007bff;
-    color: white;
-    transition: background 0.3s;
+.fc-event {
+  color: black !important;
+  background-color: rgb(255, 13, 0) !important; /* Default red for overdue communications */
+  border: 1px solid black !important;
+}
+.fc-event-title {
+  color: black !important;
+}
+.fc-event.completed {
+  background-color: rgb(15, 142, 15) !important; /* Green for completed communications */
+  border: 1px solid green !important;
 }
 
-.dashboard-sidebar button:hover {
-    background: #0056b3;
-}
-
-/* Notifications */
-.dashboard-notifications {
-    flex: 1;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    max-height: calc(100vh - 60px); /* Ensure notifications stay within viewport height */
-    overflow-y: auto; /* Enable scrolling if content overflows */
-}
-
-.dashboard-notifications h2 {
-    font-size: 1.4rem;
-    color: #ff5722;
-    margin-bottom: 15px;
-}
-
-.dashboard-notifications h3 {
-    color: #333;
-}
-
-/* Overdue and Today's Communications */
-.overdue, .dueToday {
-    padding: 10px;
-    margin: 5px 0;
-    border-radius: 5px;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.overdue {
-    background: rgba(255, 0, 0, 0.1);
-    color: red;
-    border: 1px solid rgba(255, 0, 0, 0.4);
-}
-
-.dueToday {
-    background: rgba(255, 255, 0, 0.2);
-    color: #ffa500;
-    border: 1px solid rgba(255, 255, 0, 0.6);
-}
-
-.overdue:hover, .dueToday:hover {
-    transform: scale(1.02);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-/* Calendar and Statistics */
-.dashboard-main, .dashboard-stats {
-    flex: 2;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    min-width: 300px;
-    max-height: calc(100vh - 60px); /* Ensure main content stays within viewport height */
-    overflow-y: auto; /* Enable scrolling if content overflows */
-}
-
-.dashboard-main h2, .dashboard-stats h2 {
-    font-size: 1.4rem;
-    color: #007bff;
-    margin-bottom: 15px;
-}
-
-/* Tooltip for Completed Communication */
-li.completed {
-    position: relative;
-}
-
-li.completed:hover::after {
-    content: attr(data-notes);
-    position: absolute;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 8px;
-    border-radius: 5px;
-    top: -35px;
-    left: 0;
-    width: 200px;
-    font-size: 0.9rem;
-    z-index: 10;
-}
-
-/* Modal */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: white;
-    padding: 30px;
-    border-radius: 10px;
-    width: 450px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-}
-
-.modal-content h2 {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    color: #007bff;
-}
-
-.modal-content label {
-    display: block;
-    text-align: left;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-    color: #333;
-}
-
-.modal-content input, .modal-content select, .modal-content textarea {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
-}
-
-.modal-content button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.3s;
-    margin-right: 10px;
-}
-
-.modal-content button:first-of-type {
-    background: #28a745;
-    color: white;
-}
-
-.modal-content button:first-of-type:hover {
-    background: #218838;
-}
-
-.modal-content button:last-of-type {
-    background: #dc3545;
-    color: white;
-}
-
-.modal-content button:last-of-type:hover {
-    background: #c82333;
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
-    .dashboard-content {
-        flex-direction: column;
-    }
+  .dashboard-content {
+    grid-template-columns: 1fr; /* Stack companies and communications on smaller screens */
+  }
 
-    .dashboard-sidebar, .dashboard-main, .dashboard-stats, .dashboard-notifications {
-        width: 100%;
-    }
-
-    .dashboard-sidebar, .dashboard-notifications, .dashboard-main, .dashboard-stats {
-        max-height: none; /* Remove max-height for smaller screens */
-        overflow: visible; /* Allow content to expand */
-    }
+  .dashboard-calendar {
+    height: 400px; /* Adjust calendar height for smaller screens */
+  }
 }

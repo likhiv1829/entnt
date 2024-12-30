@@ -1,7 +1,8 @@
 const express = require('express');
-const router = express.Router();
 const mongoose = require('mongoose');
 const Company = require('../models/Company');
+
+const router = express.Router();
 
 // Get all companies
 router.get('/companies', async (req, res) => {
@@ -9,11 +10,11 @@ router.get('/companies', async (req, res) => {
     const companies = await Company.find();
     res.json(companies);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to fetch companies.' });
+    res.status(500).json({ error: 'Failed to fetch companies.' });
   }
 });
 
-// Get details of a specific company
+// Get details of a specific company by ID
 router.get('/companies/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -29,20 +30,20 @@ router.get('/companies/:id', async (req, res) => {
     }
     res.status(200).json(company);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to fetch company details.' });
+    res.status(500).json({ error: 'Failed to fetch company details.' });
   }
 });
 
 // Add a new company
 router.post('/companies', async (req, res) => {
+  const { name, location, linkedInProfile, emails, phoneNumbers, comments, communicationPeriodicity } = req.body;
+
+  // Ensure required fields are provided
+  if (!name || !location || !emails) {
+    return res.status(400).json({ error: 'Name, location, and emails are required.' });
+  }
+
   try {
-    const { name, location, linkedInProfile, emails, phoneNumbers, comments, communicationPeriodicity } = req.body;
-
-    // Ensure required fields are provided
-    if (!name || !location || !emails) {
-      return res.status(400).json({ error: 'Name, location, and emails are required.' });
-    }
-
     const newCompany = new Company({
       name,
       location,
@@ -50,13 +51,13 @@ router.post('/companies', async (req, res) => {
       emails,
       phoneNumbers,
       comments,
-      communicationPeriodicity: communicationPeriodicity || 14, // Default 14 days
+      communicationPeriodicity: communicationPeriodicity || 14, // Default to 14 days
     });
 
-    await newCompany.save();
-    res.status(201).json(newCompany);
+    const savedCompany = await newCompany.save();
+    res.status(201).json(savedCompany);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to add company.' });
+    res.status(500).json({ error: 'Failed to add company.' });
   }
 });
 
@@ -85,10 +86,10 @@ router.put('/companies/:id', async (req, res) => {
     company.comments = comments || company.comments;
     company.communicationPeriodicity = communicationPeriodicity || company.communicationPeriodicity;
 
-    await company.save();
-    res.status(200).json(company);
+    const updatedCompany = await company.save();
+    res.status(200).json(updatedCompany);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to update company.' });
+    res.status(500).json({ error: 'Failed to update company.' });
   }
 });
 
@@ -111,10 +112,10 @@ router.post('/companies/:id/communications', async (req, res) => {
     const newCommunication = { type, date, notes, highlight: highlight || 'upcoming' };
     company.communications.push(newCommunication);
 
-    await company.save();
-    res.status(201).json(company);
+    const updatedCompany = await company.save();
+    res.status(201).json(updatedCompany);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to add communication.' });
+    res.status(500).json({ error: 'Failed to add communication.' });
   }
 });
 
@@ -148,10 +149,28 @@ router.put('/companies/:companyId/communications/:commId', async (req, res) => {
       highlight: highlight || company.communications[communicationIndex].highlight,
     };
 
-    await company.save();
-    res.status(200).json(company);
+    const updatedCompany = await company.save();
+    res.status(200).json(updatedCompany);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to update communication.' });
+    res.status(500).json({ error: 'Failed to update communication.' });
+  }
+});
+router.delete('/companies/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Validate company ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: 'Invalid company ID.' });
+  }
+
+  try {
+    const company = await Company.findByIdAndDelete(id);
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found.' });
+    }
+    res.status(200).json({ message: 'Company deleted successfully.' });
+  } catch (err) {
+    res.status(400).json({ error: 'Failed to delete company.' });
   }
 });
 

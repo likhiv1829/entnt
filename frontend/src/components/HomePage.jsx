@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // Import useHistory for React Router
-import "./HomePage.css"; // Add your styling here
+import { useNavigate } from "react-router-dom";
+import "./HomePage.css"; 
 
 const HomePage = () => {
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -14,7 +14,7 @@ const HomePage = () => {
   });
   const [errorMessage, setErrorMessage] = useState("");
 
-  const navigate = useNavigate(); // Initialize history for navigation
+  const navigate = useNavigate();
 
   const handleAdminLogin = () => {
     setShowAdminModal(true);
@@ -22,10 +22,12 @@ const HomePage = () => {
 
   const handleUserLogin = () => {
     setShowUserModal(true);
+    setShowRegisterModal(false); // Ensure registration modal is closed
   };
 
   const handleRegister = () => {
     setShowRegisterModal(true);
+    setShowUserModal(false); // Ensure login modal is closed
   };
 
   const closeModals = () => {
@@ -49,7 +51,7 @@ const HomePage = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/admin/login", // Ensure correct endpoint
+        "http://localhost:5000/api/auth/admin/login",
         {
           email: formData.email,
           password: formData.password,
@@ -63,10 +65,7 @@ const HomePage = () => {
 
       localStorage.setItem("token", response.data.token);
       setShowAdminModal(false);
-      
-      // Redirect to Admin Dashboard after login
-      navigate('/admin'); // You can change this path if needed
-
+      navigate('/admin'); // Redirect to Admin Dashboard
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "An error occurred");
     }
@@ -77,7 +76,7 @@ const HomePage = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login", // Ensure correct endpoint
+        "http://localhost:5000/api/auth/login",
         {
           email: formData.email,
           password: formData.password,
@@ -91,10 +90,7 @@ const HomePage = () => {
 
       localStorage.setItem("token", response.data.token);
       setShowUserModal(false);
-      
-      // Redirect to User Dashboard after login
-      navigate('/user/dashboard'); // You can change this path if needed
-
+      navigate('/user/dashboard'); // Redirect to User Dashboard
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "An error occurred");
     }
@@ -105,7 +101,7 @@ const HomePage = () => {
     e.preventDefault();
     try {
       await axios.post(
-        "http://localhost:5000/api/auth/register", // Ensure correct endpoint
+        "http://localhost:5000/api/auth/register",
         {
           name: formData.name,
           email: formData.email,

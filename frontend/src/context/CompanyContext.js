@@ -1,40 +1,62 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
 
-// Create context for companies
+// Create Context for Company
 const CompanyContext = createContext();
 
-// Custom hook to use the CompanyContext
-export const useCompanyContext = () => {
-  return useContext(CompanyContext);
-};
+// Custom Hook to access Company Context
+export const useCompanyContext = () => useContext(CompanyContext);
 
-// Company provider to wrap the app and manage the companies state
 export const CompanyProvider = ({ children }) => {
-  const [companies, setCompanies] = useState([]);  // Manage companies state
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(false); // To manage loading state
+  const [error, setError] = useState(null); // To store error messages
 
-  // Add a new company to the list (Avoid duplicates)
-  const addCompany = (company) => {
-    setCompanies((prevCompanies) => {
-      // Check if the company already exists (based on name or id)
-      const exists = prevCompanies.some((existingCompany) => existingCompany.id === company.id || existingCompany.name === company.name);
-      if (exists) {
-        return prevCompanies;  // Don't add if company already exists
-      }
-      return [...prevCompanies, company];  // Add company if it's new
-    });
+  // Fetch companies from the backend
+  const fetchCompanies = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get("http://localhost:5000/api/companies"); // Replace with your API endpoint
+      setCompanies(response.data);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      setError("Failed to load companies. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Update an existing company by its ID
-  const updateCompanyCommunication = (updatedCompany) => {
-    setCompanies((prevCompanies) => {
-      return prevCompanies.map((company) => 
-        company.id === updatedCompany.id ? updatedCompany : company
-      );
-    });
+  // Add a company
+  const addCompany = async (newCompany) => {
+    try {
+      const response = await axios.post("/api/companies", newCompany); // API endpoint for adding company
+      setCompanies((prev) => [...prev, response.data]);
+    } catch (error) {
+      console.error("Error adding company:", error);
+      setError("Failed to add company. Please try again.");
+    }
   };
+
+  // Update company communications
+  const updateCompanyCommunication = (updatedCompanies) => {
+    setCompanies(updatedCompanies);
+  };
+
+  // Fetch companies when the component mounts
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
 
   return (
-    <CompanyContext.Provider value={{ companies, addCompany, updateCompanyCommunication }}>
+    <CompanyContext.Provider
+      value={{
+        companies,
+        addCompany,
+        updateCompanyCommunication,
+        loading,      // Expose loading state
+        error,        // Expose error state
+      }}
+    >
       {children}
     </CompanyContext.Provider>
   );
