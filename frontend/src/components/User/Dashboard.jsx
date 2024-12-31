@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useCompanyContext } from "../../context/CompanyContext";
-import "./Dashboard.css";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import {
@@ -13,8 +12,9 @@ import {
   Legend,
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
+import "./Dashboard.css";
 
-// Register necessary Chart.js components and scales
+// Register Chart.js components and scales
 ChartJS.register(LinearScale, CategoryScale, BarElement, Title, Tooltip, Legend);
 
 const Dashboard = () => {
@@ -35,7 +35,13 @@ const Dashboard = () => {
     datasets: [],
   });
   const [calendarEvents, setCalendarEvents] = useState([]);
-  const [showNotification, setShowNotification] = useState(false); // State for the notification bell
+  const [showNotification, setShowNotification] = useState(false);
+  const [statistics, setStatistics] = useState({
+    totalCommunications: 0,
+    overdueCommunications: 0,
+    dueTodayCommunications: 0,
+  });
+  const [hoveredEvent, setHoveredEvent] = useState(null); // For storing the hovered event details
   const fullCalendarRef = useRef(null);
 
   const getCommunicationStatus = (date) => {
@@ -48,8 +54,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     const uniqueEvents = [];
-    const seenKeys = new Set(); // Track unique event keys
-    const overdueCommunications = []; // To collect overdue communications
+    const seenKeys = new Set();
+    const overdueCommunications = [];
+    const dueTodayCommunications = [];
+    let totalCommunications = 0;
 
     companies?.forEach((company) => {
       company.communications?.forEach((comm) => {
@@ -59,23 +67,28 @@ const Dashboard = () => {
           seenKeys.add(uniqueKey);
 
           const communicationStatus = getCommunicationStatus(comm.date);
-          if (communicationStatus === "overdue") {
-            overdueCommunications.push(comm); // Collect overdue communications
+          if (communicationStatus === "overdue" && comm.status !== "completed") {
+            overdueCommunications.push({ ...comm, companyId: company.id });
           }
+          if (communicationStatus === "dueToday") {
+            dueTodayCommunications.push({ ...comm, companyId: company.id });
+          }
+
+          totalCommunications++;
 
           uniqueEvents.push({
             title: `${comm.type || "No Type"}: ${comm.notes || "No Notes"}`,
             date: comm.date || new Date().toISOString().split("T")[0],
             backgroundColor:
-              communicationStatus === "overdue"
-                ? "red" // Default color for overdue communications
-                : communicationStatus === "completed"
+              comm.status === "completed"
                 ? "green"
-                : "transparent",
+                : communicationStatus === "overdue"
+                ? "red"
+                : "blue",
             borderColor: "black",
             textColor: "white",
             description: `${comm.type} on ${comm.date}: ${comm.notes}`,
-            eventId: `${comm.companyId}-${comm.date}-${comm.notes}`,
+            eventId: `${company.id}-${comm.date}-${comm.notes}`,
           });
         }
       });
@@ -84,13 +97,21 @@ const Dashboard = () => {
     setCalendarEvents(uniqueEvents);
     setNotifications((prevState) => ({
       ...prevState,
-      overdue: overdueCommunications, // Set overdue communications
+      overdue: overdueCommunications,
+      dueToday: dueTodayCommunications,
     }));
+
+    setStatistics({
+      totalCommunications,
+      overdueCommunications: overdueCommunications.length,
+      dueTodayCommunications: dueTodayCommunications.length,
+    });
   }, [companies]);
 
   useEffect(() => {
     const communicationFrequency = {
       "LinkedIn Post": 0,
+      "LinkedIn Message": 0,
       Email: 0,
       "Phone Call": 0,
       Other: 0,
@@ -116,12 +137,14 @@ const Dashboard = () => {
             "rgba(54, 162, 235, 0.2)",
             "rgba(255, 206, 86, 0.2)",
             "rgba(75, 192, 192, 0.2)",
+            "rgba(153, 102, 255, 0.2)",
           ],
           borderColor: [
             "rgba(255, 99, 132, 1)",
             "rgba(54, 162, 235, 1)",
             "rgba(255, 206, 86, 1)",
             "rgba(75, 192, 192, 1)",
+            "rgba(153, 102, 255, 1)",
           ],
           borderWidth: 1,
         },
@@ -130,12 +153,14 @@ const Dashboard = () => {
   }, [companies]);
 
   const handleMarkAsCompleted = (companyId, communicationIndex) => {
+    const company = companies.find((company) => company.id === companyId);
+    const communication = company?.communications?.[communicationIndex];
+
     const updatedCompanies = companies.map((company) => {
       if (company.id === companyId) {
         const updatedCommunications = company.communications.map((comm, index) => {
           if (index === communicationIndex) {
-            const updatedComm = { ...comm, status: "completed" }; // Mark as completed
-            return updatedComm;
+            return { ...comm, status: "completed" };
           }
           return comm;
         });
@@ -143,40 +168,48 @@ const Dashboard = () => {
       }
       return company;
     });
-  
-    // Remove the completed communication from overdue notifications
-    const updatedOverdue = notifications.overdue.filter((comm, index) => index !== communicationIndex);
-  
+
+    updateCompanyCommunication(updatedCompanies);
+
+    // Update overdue communications
+    const updatedOverdue = notifications.overdue.filter(
+      (comm) =>
+        !(
+          comm.companyId === companyId &&
+          comm.date === communication?.date &&
+          comm.notes === communication?.notes
+        )
+    );
+
     setNotifications((prevState) => ({
       ...prevState,
-      overdue: updatedOverdue, // Update overdue list
+      overdue: updatedOverdue,
     }));
-  
-    // If there are no overdue communications left, hide notification bell
+
+    // Hide notification bell if no overdue communications left
     if (updatedOverdue.length === 0) {
-      setShowNotification(false); // Hide notification bell
+      setShowNotification(false);
     }
-  
-    updateCompanyCommunication(updatedCompanies); // Update company communications
-  
-    // Update calendar event status for the completed communication
+
+    // Update calendar events to reflect completion
     const updatedCalendarEvents = calendarEvents.map((event) => {
-      if (event.eventId === `${companyId}-${companies[companyId]?.communications[communicationIndex]?.date}-${companies[companyId]?.communications[communicationIndex]?.notes}`) {
-        return { ...event, backgroundColor: "green", classNames: ["completed"] }; // Mark event as completed
+      if (
+        event.eventId === `${companyId}-${communication?.date}-${communication?.notes}`
+      ) {
+        return { ...event, backgroundColor: "green", classNames: ["completed"] };
       }
       return event;
     });
-  
-    setCalendarEvents(updatedCalendarEvents); // Update calendar events state
+
+    setCalendarEvents(updatedCalendarEvents);
   };
-  
 
   const handleNotificationClick = () => {
     setShowNotification(!showNotification);
   };
 
   const handleCommunicationSubmit = (e) => {
-    e.preventDefault(); // Prevent default form submission behavior
+    e.preventDefault();
     if (!newCommunication.type || !newCommunication.date || !newCommunication.notes) {
       alert("Please fill in all fields.");
       return;
@@ -193,7 +226,7 @@ const Dashboard = () => {
           ...company,
           communications: [
             ...(company.communications || []),
-            { ...newCommunication, highlight: "upcoming" },
+            { ...newCommunication, highlight: "upcoming", status: "pending" },
           ],
         };
       }
@@ -213,6 +246,9 @@ const Dashboard = () => {
         <div className="notification-bell" onClick={handleNotificationClick}>
           🔔
         </div>
+        <button onClick={() => alert("Logout functionality to be implemented")}>
+          <a href="/">Logout</a>
+        </button>
       </header>
 
       {showNotification && notifications.overdue.length === 0 && (
@@ -259,6 +295,12 @@ const Dashboard = () => {
           </ul>
           <button onClick={() => setShowModal(!showModal)}>Log Communication</button>
         </div>
+        <div className="stats">
+          <label>Analysis</label>
+            <p>Total Communications: {statistics.totalCommunications}</p>
+            <p>Overdue Communications: {statistics.overdueCommunications}</p>
+            <p>Due Today Communications: {statistics.dueTodayCommunications}</p>
+        </div>
 
         <div className="dashboard-calendar">
           <h2>Communication Calendar</h2>
@@ -267,43 +309,12 @@ const Dashboard = () => {
             plugins={[dayGridPlugin]}
             initialView="dayGridMonth"
             events={calendarEvents}
-            eventMouseEnter={(info) => {
-              const tooltip = document.createElement("div");
-              tooltip.className = "tooltip-content";
-              tooltip.innerText = info.event.extendedProps.description;
-              document.body.appendChild(tooltip);
-              tooltip.style.position = "absolute";
-              tooltip.style.left = `${info.jsEvent.pageX}px`;
-              tooltip.style.top = `${info.jsEvent.pageY + 10}px`;
-              tooltip.style.backgroundColor = "#333";
-              tooltip.style.color = "#fff";
-              tooltip.style.padding = "5px 10px";
-              tooltip.style.borderRadius = "5px";
-            }}
-            eventMouseLeave={() => {
-              document.querySelectorAll(".tooltip-content").forEach((el) => el.remove());
-            }}
           />
         </div>
 
         <div className="dashboard-statistics">
           <h2>Statistics</h2>
-          <div className="statistics-item">
-            <h3>Total Communications</h3>
-            <p>{companies.reduce((total, company) => total + (company.communications?.length || 0), 0)}</p>
-          </div>
-          <div className="statistics-item">
-            <h3>Overdue Communications</h3>
-            <p>{notifications.overdue.length}</p>
-          </div>
-          <div className="statistics-item">
-            <h3>Due Today Communications</h3>
-            <p>{notifications.dueToday.length}</p>
-          </div>
-        </div>
-
-        <div className="dashboard-chart">
-          <h2>Communication Frequency Chart</h2>
+          
           <Chart
             type="bar"
             data={chartData}
@@ -311,7 +322,10 @@ const Dashboard = () => {
               responsive: true,
               plugins: {
                 legend: { position: "top" },
-                title: { display: true, text: "Communication Frequency by Type" },
+                title: { display: true, text: "Communication Frequency" },
+              },
+              scales: {
+                x: { title: { display: true, text: "Communication Type" } },
               },
             }}
           />
@@ -325,15 +339,21 @@ const Dashboard = () => {
             <form onSubmit={handleCommunicationSubmit}>
               <div>
                 <label htmlFor="type">Type</label>
-                <input
-                  type="text"
+                <select
                   id="type"
                   value={newCommunication.type}
                   onChange={(e) =>
                     setNewCommunication({ ...newCommunication, type: e.target.value })
                   }
                   required
-                />
+                >
+                  <option value="">Select Communication Type</option>
+                  <option value="LinkedIn Post">LinkedIn Post</option>
+                  <option value="LinkedIn Message">LinkedIn Message</option>
+                  <option value="Email">Email</option>
+                  <option value="Phone Call">Phone Call</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
               <div>
                 <label htmlFor="date">Date</label>
@@ -356,9 +376,9 @@ const Dashboard = () => {
                     setNewCommunication({ ...newCommunication, notes: e.target.value })
                   }
                   required
-                />
+                ></textarea>
               </div>
-              <button type="submit">Submit</button>
+              <button type="submit">Add Communication</button>
               <button type="button" onClick={() => setShowModal(false)}>
                 Cancel
               </button>

@@ -1,89 +1,336 @@
+/* Container for the entire dashboard */
 .dashboard-container {
   display: flex;
   flex-direction: column;
-  width: 100vw; /* 100% of the viewport width */
+  width: 100vw;
   height: 100vh;
-  padding: 70px;
-  background: linear-gradient(to right, #74ebd5, #acb6e5);
+  padding: 20px;
+  background: linear-gradient(to right, #2c3e50, #34495e);
   overflow: auto;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #ecf0f1;
 }
 
+/* Header styling for the dashboard */
 .dashboard-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
+  padding: 15px;
+  background-color: #1a252f;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.3s ease;
 }
 
+.dashboard-header:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); /* Subtle hover effect for header */
+}
+
+.dashboard-header h1 {
+  font-size: 2rem;
+  color: #ecf0f1;
+  transition: color 0.3s ease;
+}
+
+.dashboard-header h1:hover {
+  color: #1abc9c; /* Header title color change on hover */
+}
+
+/* Notification bell with smooth transition on hover */
+.notification-bell {
+  cursor: pointer;
+  font-size: 24px;
+  color: #16a085;
+  position: relative;
+  transition: transform 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.notification-bell:hover {
+  transform: scale(1.2);
+  color: #1abc9c; /* Glowing color on hover */
+  box-shadow: 0 0 15px rgba(26, 188, 156, 0.7); /* Glow effect */
+}
+
+.notification-bell.active .badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: red;
+  color: white;
+  font-size: 12px;
+  padding: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Added shadow to badge */
+}
+
+/* Styling for the 'no overdue' message */
+.no-overdue-notifications {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #1abc9c;
+  color: #ffffff;
+  border-radius: 10px;
+  font-weight: bold;
+  border: 1px solid #16a085;
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Overdue notifications list style */
+.overdue-notifications-list {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #e74c3c;
+  border: 1px solid #c0392b;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.overdue-notifications-list:hover {
+  transform: translateY(-5px); /* Lift effect on hover */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Container for the main content (sidebar and calendar) */
 .dashboard-content {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Create two columns for companies and last five communications */
-  gap: 20px; /* Add space between items */
-  margin-bottom: 30px; /* Space between sections */
-}
-
-.dashboard-sidebar,
-.dashboard-communications {
-  background-color: #ffffff;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: padding 0.3s ease;
 }
 
+.dashboard-content:hover {
+  padding: 30px; /* Slight padding expansion on hover for depth */
+}
+
+/* Sidebar style */
 .dashboard-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 20px;
+  background-color: #2c3e50;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
 }
 
-.dashboard-communications {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.dashboard-sidebar:hover {
+  transform: translateY(-5px); /* Lift effect on hover */
 }
 
+.dashboard-sidebar h2 {
+  font-size: 1.5rem;
+  color: #ecf0f1;
+  margin-bottom: 10px;
+  transition: color 0.3s ease;
+}
+
+.dashboard-sidebar h2:hover {
+  color: #1abc9c; /* Hover effect on section titles */
+}
+
+.dashboard-sidebar ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.dashboard-sidebar li {
+  margin-bottom: 10px;
+}
+
+.dashboard-sidebar label {
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+.dashboard-sidebar button {
+  margin-top: 15px;
+  padding: 10px 15px;
+  background-color: #1abc9c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dashboard-sidebar button:hover {
+  background-color: #16a085;
+  box-shadow: 0 0 10px rgba(26, 188, 156, 0.6);
+  transform: scale(1.05); /* Slight scaling effect on hover */
+}
+
+/* Calendar styling */
 .dashboard-calendar {
-  background-color: #ffffff;
-  width: 100vh;
-  height: 92vh; /* Adjust height of calendar */
+  grid-column: 1 / 3;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px; /* Space below calendar */
+  background-color: #34495e;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
 }
 
-.dashboard-statistics {
-  background-color: #ffffff;
-  padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  width: 10%;
-  height:20px;
+.dashboard-calendar:hover {
+  transform: translateY(-5px); /* Lift effect on hover */
 }
 
-.dashboard-chart {
-  flex: 1 1 300px;
-  min-width: 100%;
-  margin-top: 0px;
-  padding-top: 10px;
-  background-color: white;
+.fc-daygrid-event {
+  transition: all 0.3s ease;
 }
 
-.fc-event {
-  color: black !important;
-  background-color: rgb(255, 13, 0) !important; /* Default red for overdue communications */
-  border: 1px solid black !important;
-}
-.fc-event-title {
-  color: black !important;
-}
-.fc-event.completed {
-  background-color: rgb(15, 142, 15) !important; /* Green for completed communications */
-  border: 1px solid green !important;
+.fc-daygrid-event:hover {
+  border: 2px solid #e74c3c; /* Red glowing border on hover */
+  cursor: pointer;
+  background-color: rgba(231, 76, 60, 0.1); /* Red subtle background effect */
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.4); /* Glowing hover effect */
 }
 
-@media (max-width: 768px) {
-  .dashboard-content {
-    grid-template-columns: 1fr; /* Stack companies and communications on smaller screens */
+/* Tooltip box for event details */
+.fc-daygrid-event .event-details {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  width: 200px;
+  z-index: 999;
+}
+
+.fc-daygrid-event:hover .event-details {
+  display: block;
+  opacity: 1;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Keyframes for tooltip fade-in effect */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
   }
+  100% {
+    opacity: 1;
+  }
+}
 
-  .dashboard-calendar {
-    height: 400px; /* Adjust calendar height for smaller screens */
+/* Statistics section styling */
+.dashboard-statistics {
+  grid-column: 1 / 3;
+  padding: 20px;
+  background-color: #2c3e50;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-statistics h2 {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  color: #ecf0f1;
+  transition: color 0.3s ease;
+}
+
+.dashboard-statistics h2:hover {
+  color: #1abc9c;
+}
+
+.dashboard-statistics p {
+  font-size: 1.2rem;
+  margin: 10px 0;
+  color: #bdc3c7;
+}
+
+.dashboard-statistics canvas {
+  margin-top: 20px;
+  background-color: #2c3e50;
+  border-radius: 10px;
+}
+
+/* Modal styling for adding communication */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: modalEntrance 0.5s ease-in-out;
+}
+
+.modal-content {
+  background-color: #2c3e50;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 100%;
+  color: #ecf0f1;
+  transform: translateY(-10px);
+}
+
+.modal form {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal label {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.modal input,
+.modal textarea {
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #bdc3c7;
+  border-radius: 5px;
+  background-color: #34495e;
+  color: #ecf0f1;
+}
+
+.modal button {
+  padding: 10px 15px;
+  background-color: #1abc9c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.modal button:hover {
+  background-color: #16a085;
+  box-shadow: 0 0 10px rgba(26, 188, 156, 0.6);
+}
+
+.modal button[type="button"] {
+  background-color: #f44336;
+}
+
+.modal button[type="button"]:hover {
+  background-color: #c62828;
+}
+
+/* Disabled button styling */
+button[disabled] {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* Modal entrance animation */
+@keyframes modalEntrance {
+  0% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
