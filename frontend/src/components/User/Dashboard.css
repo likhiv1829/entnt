@@ -64,6 +64,58 @@
   border-radius: 50%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Added shadow to badge */
 }
+/* Notification Modal */
+.notification-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* Dark background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.notification-modal .modal-content {
+  background-color: rgb(4, 4, 4);
+  padding: 20px;
+  width: 80%;
+  max-width: 600px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
+  max-height: 80%;
+}
+
+.notification-modal h2 {
+  margin-top: 0;
+}
+
+.notification-modal ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.notification-modal li {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.notification-modal button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-top: 20px;
+  border-radius: 4px;
+}
+
+.notification-modal button:hover {
+  background-color: #0056b3;
+}
 
 /* Styling for the 'no overdue' message */
 .no-overdue-notifications {

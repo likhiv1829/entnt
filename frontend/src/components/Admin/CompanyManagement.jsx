@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { getCompanies, createCompany, updateCompany, deleteCompany } from '../../utils/api'; // Ensure this path is correct
+import {
+  getCompanies,
+  createCompany,
+  updateCompany,
+  deleteCompany,
+} from '../../utils/api'; // Replace with actual API utility path
 
 const CompanyManagement = () => {
   const [companies, setCompanies] = useState([]);
@@ -15,7 +20,7 @@ const CompanyManagement = () => {
   });
   const [error, setError] = useState('');
 
-  // Fetch companies when the component mounts
+  // Fetch companies on component mount
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -23,38 +28,49 @@ const CompanyManagement = () => {
         setCompanies(data);
       } catch (err) {
         console.error('Error fetching companies:', err);
-        setError('Failed to fetch companies. Please try again later.');
+        setError('Failed to fetch companies.');
       }
     };
-
     fetchCompanies();
   }, []);
 
-  // Handle form input changes
-  const handleChange = (e) => {
+  // Handle input changes for new or updating company
+  const handleCompanyChange = (e) => {
     const { name, value } = e.target;
-    setNewCompany(prevState => ({
-      ...prevState,
-      [name]: value
+    setNewCompany((prevCompany) => ({
+      ...prevCompany,
+      [name]: value, // Correctly update the state
     }));
   };
 
-  // Handle form submission for adding or updating companies
-  const handleSubmit = async (e) => {
+  // Add or update company
+  const handleCompanySubmit = async (e) => {
     e.preventDefault();
+    
     try {
+      let updatedCompany;
+
       if (newCompany._id) {
-        // Update existing company
-        await updateCompany(newCompany._id, newCompany);
+        // Update company
+        updatedCompany = await updateCompany(newCompany._id, newCompany);
+        console.log('Updated company:', updatedCompany);
+
+        // Optimistically update local companies list
+        setCompanies((prevCompanies) => 
+          prevCompanies.map((company) => 
+            company._id === updatedCompany._id ? updatedCompany : company
+          )
+        );
       } else {
-        // Add new company
-        await createCompany(newCompany);
+        // Create new company
+        const createdCompany = await createCompany(newCompany);
+        console.log('Created company:', createdCompany);
+
+        // Optimistically add new company
+        setCompanies((prevCompanies) => [...prevCompanies, createdCompany]);
       }
 
-      const updatedCompanies = await getCompanies();
-      setCompanies(updatedCompanies);
-
-      // Reset the form
+      // Reset form after submission
       setNewCompany({
         _id: '',
         name: '',
@@ -65,98 +81,135 @@ const CompanyManagement = () => {
         comments: '',
         communicationPeriodicity: 14,
       });
-      setError('');
+
     } catch (err) {
       console.error('Error saving company:', err);
-      setError('Failed to save company. Please try again later.');
+      setError('Failed to save company.');
     }
   };
 
-  // Handle editing (updating) a company
-  const handleUpdate = (id) => {
-    const company = companies.find(c => c._id === id);
-    setNewCompany(company);
-  };
-
-  // Handle deleting a company
+  // Delete company
   const handleDelete = async (id) => {
     try {
-      await deleteCompany(id); // Delete the company
-      const updatedCompanies = await getCompanies(); // Fetch updated list of companies
-      setCompanies(updatedCompanies); // Update the local state
-      setError('');
+      const updatedCompanies = companies.filter(company => company._id !== id);
+      setCompanies(updatedCompanies);
+
+      await deleteCompany(id);
     } catch (err) {
       console.error('Error deleting company:', err);
-      setError('Failed to delete company. Please try again later.');
+      setError('Failed to delete company.');
+
+      // Rollback if deletion fails
+      const originalCompanies = await getCompanies();
+      setCompanies(originalCompanies);
     }
+  };
+
+  const handleDeleteCommunication = (companyId, commId) => {
+    removeCommunication(companyId, commId);  // Call the function from context
   };
 
   return (
     <div>
-      <h2>Manage Companies</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          value={newCompany.name}
-          onChange={handleChange}
-          placeholder="Company Name"
-        />
-        <input
-          type="text"
-          name="location"
-          value={newCompany.location}
-          onChange={handleChange}
-          placeholder="Location"
-        />
-        <input
-          type="text"
-          name="linkedInProfile"
-          value={newCompany.linkedInProfile}
-          onChange={handleChange}
-          placeholder="LinkedIn Profile"
-        />
-        <input
-          type="text"
-          name="emails"
-          value={newCompany.emails}
-          onChange={handleChange}
-          placeholder="Emails"
-        />
-        <input
-          type="text"
-          name="phoneNumbers"
-          value={newCompany.phoneNumbers}
-          onChange={handleChange}
-          placeholder="Phone Numbers"
-        />
-        <textarea
-          name="comments"
-          value={newCompany.comments}
-          onChange={handleChange}
-          placeholder="Comments"
-        />
-        <input
-          type="number"
-          name="communicationPeriodicity"
-          value={newCompany.communicationPeriodicity}
-          onChange={handleChange}
-          placeholder="Communication Periodicity"
-        />
-        <button type="submit">{newCompany._id ? 'Update Company' : 'Add Company'}</button>
-      </form>
+      <h2>Company Management</h2>
 
+      {/* Add or Update Company Form */}
+      <div>
+        <h3>{newCompany._id ? 'Update Company' : 'Add New Company'}</h3>
+        <form onSubmit={handleCompanySubmit}>
+          <input
+            type="text"
+            name="name"
+            value={newCompany.name}
+            onChange={handleCompanyChange}
+            placeholder="Company Name"
+            required
+          />
+          <input
+            type="text"
+            name="location"
+            value={newCompany.location}
+            onChange={handleCompanyChange}
+            placeholder="Location"
+            required
+          />
+          <input
+            type="url"
+            name="linkedInProfile"
+            value={newCompany.linkedInProfile}
+            onChange={handleCompanyChange}
+            placeholder="LinkedIn Profile"
+          />
+          <input
+            type="text"
+            name="emails"
+            value={newCompany.emails}
+            onChange={handleCompanyChange}
+            placeholder="Emails (comma-separated)"
+          />
+          <input
+            type="text"
+            name="phoneNumbers"
+            value={newCompany.phoneNumbers}
+            onChange={handleCompanyChange}
+            placeholder="Phone Numbers (comma-separated)"
+          />
+          <textarea
+            name="comments"
+            value={newCompany.comments}
+            onChange={handleCompanyChange}
+            placeholder="Comments"
+          ></textarea>
+          <input
+            type="number"
+            name="communicationPeriodicity"
+            value={newCompany.communicationPeriodicity}
+            onChange={handleCompanyChange}
+            placeholder="Communication Periodicity (days)"
+            required
+          />
+          <button type="submit">
+            {newCompany._id ? 'Update Company' : 'Add Company'}
+          </button>
+        </form>
+      </div>
+
+      {/* Error Display */}
       {error && <p className="error">{error}</p>}
 
-      <h3>Existing Companies</h3>
+      {/* Companies List */}
+      <h3>Companies</h3>
       <ul>
         {companies.map((company) => (
           <li key={company._id}>
-            <h4>{company.name} - {company.location}</h4>
-            <p>{company.linkedInProfile}</p>
-            <p>{company.emails}</p>
-            <button onClick={() => handleUpdate(company._id)}>Update</button>
+            <h4>{company.name}</h4>
+            <p>{company.location}</p>
+            <p>LinkedIn: {company.linkedInProfile}</p>
+            <p>Emails: {company.emails}</p>
+            <p>Phone Numbers: {company.phoneNumbers}</p>
+            <p>Communication Periodicity: {company.communicationPeriodicity} days</p>
+            <button onClick={() => setNewCompany(company)}>Edit</button>
             <button onClick={() => handleDelete(company._id)}>Delete</button>
+
+            {/* Communications */}
+            {/* Communications */}
+<h5>Communications</h5>
+<ul>
+{company.communications && Array.isArray(company.communications) && company.communications.length > 0 ? (
+  company.communications.map((comm, idx) => (
+    <li key={idx}>
+      {comm.type} on {comm.date}: {comm.description}
+      <button onClick={() => handleDeleteCommunication(company._id, comm._id)}>
+        Delete
+      </button>
+    </li>
+  ))
+) : (
+  <p>No communications available</p>
+)}
+
+</ul>
+
           </li>
         ))}
       </ul>

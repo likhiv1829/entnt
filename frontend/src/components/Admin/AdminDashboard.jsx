@@ -1,172 +1,255 @@
-import React, { useState } from 'react';
-import { useCompanyContext } from "../../context/CompanyContext"; // Import Context
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useCompanyContext } from "../../context/CompanyContext";
+import CompanyManagement from "./CompanyManagement"; // Import CompanyManagement
+import CommunicationMethodManagement from "./CommunicationMethodManagement"; // Import CommunicationMethodManagement
 import './AdminDashboard.css';
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const AdminDashboard = () => {
-  const { companies, updateCompanyCommunication, addCompany } = useCompanyContext();  // Use context to get companies
+  const { companies, addCommunication, removeCommunication, fetchCompanies, setCompanies } = useCompanyContext();
+  const [activePage, setActivePage] = useState("welcome");
   const [newCommunication, setNewCommunication] = useState({
+    companyId: "",
     type: "",
     date: "",
     description: "",
   });
-  const [newCompany, setNewCompany] = useState({
-    name: "",
-    details: "",
-  });
+  const [loading, setLoading] = useState(true); // Loading state for companies
 
-  // Handle Communication Form Submit
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  // Fetch companies when component mounts
+  useEffect(() => {
+    const loadCompanies = async () => {
+      await fetchCompanies(); // Fetch the latest companies from the database
+      setLoading(false); // Set loading to false after fetching
+    };
+    loadCompanies();
+  }, [fetchCompanies]);
+
+  // Handle form change for logging communication
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCommunication((prevComm) => ({
+      ...prevComm,
+      [name]: value,
+    }));
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    // Clear authentication data and navigate to login page
+    localStorage.removeItem("authToken");
+    navigate("/"); // Use the navigate function from useNavigate
+  };
+
+  // Handle submit for logging communication
   const handleCommunicationSubmit = (e) => {
     e.preventDefault();
 
-    if (!newCommunication.type || !newCommunication.date || !newCommunication.description) {
+    // Ensure that all fields are filled
+    if (!newCommunication.type || !newCommunication.date || !newCommunication.description || !newCommunication.companyId) {
       alert("Please fill in all fields.");
       return;
     }
 
-    // Add communication to selected company
-    const updatedCompanies = companies.map((company) => {
-      return {
-        ...company,
-        communications: [
-          ...(company.communications || []),
-          {
-            ...newCommunication,
-            status: "pending", // Initial status
-            highlight: "upcoming", // Highlight for upcoming communications
-          },
-        ],
-      };
+    // Add the new communication to the selected company using addCommunication
+    addCommunication(newCommunication.companyId, {
+      type: newCommunication.type,
+      date: newCommunication.date,
+      description: newCommunication.description,
     });
 
-    // Update the company context
-    updateCompanyCommunication(updatedCompanies);
-    setNewCommunication({ type: "", date: "", description: "" }); // Reset form fields
+    // Optionally reset form fields
+    setNewCommunication({
+      companyId: "",
+      type: "",
+      date: "",
+      description: "",
+    });
+
+    // Update the companies list after adding communication (non-mutating update)
+    const updatedCompanies = companies.map((company) => {
+      if (company._id === newCommunication.companyId) {
+        return {
+          ...company,
+          communications: Array.isArray(company.communications)
+            ? [...company.communications, {
+                type: newCommunication.type,
+                date: newCommunication.date,
+                description: newCommunication.description,
+            }]
+            : [{
+                type: newCommunication.type,
+                date: newCommunication.date,
+                description: newCommunication.description,
+            }],
+        };
+      }
+      return company;
+    });
+
+    setCompanies(updatedCompanies); // Update the companies state
   };
 
-  // Handle Company Add Form Submit
-  const handleCompanySubmit = (e) => {
-    e.preventDefault();
+  // Handle Delete Communication
+  const handleDeleteCommunication = (companyId, commId) => {
+    removeCommunication(companyId, commId); // Make sure removeCommunication is available from context
+  };
 
-    if (!newCompany.name || !newCompany.details) {
-      alert("Please fill in all fields.");
-      return;
+  // Handle Delete Company
+  const handleDeleteCompany = (companyId) => {
+    deleteCompany(companyId); // You'll need to define `deleteCompany` in your context
+    fetchCompanies(); // Refetch companies after deletion
+  };
+
+  // Render content based on active page
+  const renderContent = () => {
+    switch (activePage) {
+      case "home":
+        return (
+          <div>
+            <h2>Current Companies</h2>
+            {companies.length === 0 ? (
+              <p>No companies have been added yet.</p>
+            ) : (
+              <ul className="company-list">
+                {companies.map((company) => (
+                  <li key={company._id} className="company-item">
+                    <h3>{company.name}</h3>
+                    <p>{company.details}</p>
+                    <h4>Communications</h4>
+                    <ul>
+                      {company.communications && Array.isArray(company.communications) && company.communications.map((comm, idx) => (
+                        <li key={comm._id || idx}>
+                          <p>{comm.type} on {comm.date}</p>
+                          <p>{comm.description}</p>
+                          <button
+                            className="delete-btn"
+                            onClick={() => handleDeleteCommunication(company._id, comm._id)}
+                          >
+                            Delete
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      case "logCommunication":
+        return (
+          <div className="admin-log-communication">
+            <h2>Log Communication</h2>
+            <form onSubmit={handleCommunicationSubmit}>
+              <div>
+                <label>Company</label>
+                <select
+                  name="companyId"
+                  value={newCommunication.companyId}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company._id} value={company._id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Communication Type</label>
+                <select
+                  name="type"
+                  value={newCommunication.type}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">Select Communication Type</option>
+                  <option value="LinkedIn Post">LinkedIn Post</option>
+                  <option value="LinkedIn Message">LinkedIn Message</option>
+                  <option value="Email">Email</option>
+                  <option value="Phone Call">Phone Call</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label>Date</label>
+                <input
+                  type="date"
+                  name="date"
+                  value={newCommunication.date}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <label>Description</label>
+                <textarea
+                  name="description"
+                  value={newCommunication.description}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <button type="submit">Log Communication</button>
+            </form>
+          </div>
+        );
+      case "manageCompanies":
+        return <CompanyManagement />; // Render CompanyManagement Component
+      case "manageCommunicationMethods":
+        return <CommunicationMethodManagement />; // Render CommunicationMethodManagement Component
+      default:
+        return (
+          <div>
+            <h2>Welcome to the Admin Dashboard</h2>
+            <p>Select an option from the left menu to get started.</p>
+          </div>
+        );
     }
-
-    // Add new company to the list
-    addCompany(newCompany);
-    setNewCompany({ name: "", details: "" }); // Reset form fields
   };
 
   return (
     <div className="admin-dashboard">
-      <header className="admin-header">
+      <header>
         <h1>Admin Dashboard</h1>
-        <p>Manage companies and ensure they reflect on the User Dashboard.</p>
+        <button className="logout-btn" onClick={handleLogout}>
+          Log out
+        </button>
       </header>
-
       <div className="admin-content">
-        <nav>
-          <ul className="admin-nav-list">
-            <li>
-              <Link className="admin-nav-link" to="/admin/company-management">Manage Companies</Link>
-            </li>
-            <li>
-              <Link className="admin-nav-link" to="/admin/communication-method-management">Manage Communication Methods</Link>
-            </li>
-          </ul>
-        </nav>
-
-        {/* Add Company Form */}
-        <section className="admin-add-company">
-          <h2>Add New Company</h2>
-          <form onSubmit={handleCompanySubmit}>
-            <div>
-              <label>Company Name</label>
-              <input
-                type="text"
-                value={newCompany.name}
-                onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label>Company Details</label>
-              <textarea
-                value={newCompany.details}
-                onChange={(e) => setNewCompany({ ...newCompany, details: e.target.value })}
-                required
-              />
-            </div>
-            <button type="submit">Add Company</button>
-          </form>
-        </section>
-
-        {/* Manage Companies */}
-        <section className="admin-companies">
-          <h2>Current Companies</h2>
-          {companies.length === 0 ? (
-            <p>No companies have been added yet.</p>
-          ) : (
-            <ul className="company-list">
-              {companies.map((company) => (
-                <li key={company._id} className="company-item">
-                  <h3>{company.name}</h3>
-                  <p>{company.details}</p>
-                  <h4>Communications</h4>
-                  <ul>
-                    {company.communications?.map((comm, idx) => (
-                      <li key={idx}>
-                        <p>{comm.type} on {comm.date}</p>
-                        <p>{comm.description}</p>
-                      </li>
-                    ))}
-                  </ul>
+        {loading ? (
+          <div>Loading companies...</div>
+        ) : (
+          <>
+            {/* Sidebar Menu */}
+            <nav className="admin-sidebar">
+              <ul>
+                <li>
+                  <button onClick={() => setActivePage("home")}>Home</button>
                 </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                <li>
+                  <button onClick={() => setActivePage("logCommunication")}>Log Communication</button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePage("manageCompanies")}>Manage Companies</button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePage("manageCommunicationMethods")}>
+                    Manage Communication Methods
+                  </button>
+                </li>
+              </ul>
+            </nav>
 
-        {/* Log Communication Form */}
-        <section className="admin-log-communication">
-          <h2>Log Communication</h2>
-          <form onSubmit={handleCommunicationSubmit}>
-            <div>
-              <label>Communication Type</label>
-              <select
-                value={newCommunication.type}
-                onChange={(e) => setNewCommunication({ ...newCommunication, type: e.target.value })}
-                required
-              >
-                <option value="">Select Communication Type</option>
-                <option value="LinkedIn Post">LinkedIn Post</option>
-                <option value="LinkedIn Message">LinkedIn Message</option>
-                <option value="Email">Email</option>
-                <option value="Phone Call">Phone Call</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label>Date</label>
-              <input
-                type="date"
-                value={newCommunication.date}
-                onChange={(e) => setNewCommunication({ ...newCommunication, date: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label>Description</label>
-              <textarea
-                value={newCommunication.description}
-                onChange={(e) => setNewCommunication({ ...newCommunication, description: e.target.value })}
-                required
-              />
-            </div>
-            <button type="submit">Log Communication</button>
-          </form>
-        </section>
+            {/* Target Div for Dynamic Content */}
+            <div className="admin-target-content">{renderContent()}</div>
+          </>
+        )}
       </div>
     </div>
   );
