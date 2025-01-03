@@ -8,54 +8,60 @@ const CompanyContext = createContext();
 export const useCompanyContext = () => useContext(CompanyContext);
 
 export const CompanyProvider = ({ children }) => {
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(false); // To manage loading state
-  const [error, setError] = useState(null); // To store error messages
+  const [companies, setCompanies] = useState(() => {
+    // Load companies from localStorage if available, otherwise default to empty array
+    const savedCompanies = localStorage.getItem("companies");
+    return savedCompanies ? JSON.parse(savedCompanies) : [];
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch companies from the backend and store in localStorage
   const fetchCompanies = async () => {
-  setLoading(true); // Set loading to true before fetch
-  try{
-      const response = await axios.get("http://localhost:5000/api/companies");
+    setLoading(true);
+    try {
+      const response = await axios.get("http://localhost:5000/api/companies", { timeout: 5000 });
       setCompanies(response.data);
-      localStorage.setItem("companies", JSON.stringify(response.data)); // Store companies in localStorage
+      localStorage.setItem("companies", JSON.stringify(response.data)); // Save to localStorage
     } catch (error) {
-      console.error("Error fetching companies:", error);
-      setError("Failed to load companies. Please try again.");
+      if (error.response) {
+        // Server responded with a status code out of range 2xx
+        console.error("Error response:", error.response);
+        setError(`Error: ${error.response.status} - ${error.response.data}`);
+      } else if (error.request) {
+        // Request was made but no response was received
+        console.error("Error request:", error.request);
+        setError("Network error: No response from the server.");
+      } else {
+        // Other errors
+        console.error("Axios error:", error.message);
+        setError(`Axios error: ${error.message}`);
+      }
     } finally {
-      setLoading(false);  // Set loading to false after fetch completes
+      setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    // Only fetch companies if they're not already available in localStorage
+    if (companies.length === 0) {
+      fetchCompanies();
+    }
+  }, [companies.length]); // Only runs if companies are empty.
 
-  // Add a company
+  // Add company
   const addCompany = async (newCompany) => {
     try {
       const response = await axios.post("/api/companies", newCompany);
       setCompanies((prev) => {
         const updatedCompanies = [...prev, response.data];
-        localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Update localStorage
+        localStorage.setItem("companies", JSON.stringify(updatedCompanies));
         return updatedCompanies;
       });
     } catch (error) {
       console.error("Error adding company:", error);
       setError("Failed to add company. Please try again.");
     }
-  };
-
-  // Add communication
-  const addCommunication = (companyId, communication) => {
-    setCompanies((prevCompanies) =>
-      prevCompanies.map((company) =>
-        company._id === companyId
-          ? {
-              ...company,
-              communications: Array.isArray(company.communications)
-                ? [...company.communications, communication]
-                : [communication],
-            }
-          : company
-      )
-    );
   };
 
   // Remove communication
@@ -70,17 +76,39 @@ export const CompanyProvider = ({ children }) => {
       return company;
     });
     setCompanies(updatedCompanies);
-    localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Update localStorage
+    localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Save updated companies
+  };
+  
+  const addCommunication = (companyId, communication) => {
+    setCompanies((prevCompanies) => {
+      const updatedCompanies = prevCompanies.map((company) =>
+        company._id === companyId
+          ? {
+              ...company,
+              communications: Array.isArray(company.communications)
+                ? [...company.communications, communication]
+                : [communication],
+            }
+          : company
+      );
+      localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Persist the updated companies
+      return updatedCompanies;
+    });
+  };
+  
+  const updateCompanyCommunication = (updatedCompanies) => {
+    setCompanies(updatedCompanies);
+    localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Persist the updated companies
   };
 
   // Delete company
   const deleteCompany = async (companyId) => {
     try {
-      await axios.delete(`http://localhost:5000/api/companies/${companyId}`); // API endpoint for deleting company
+      await axios.delete(`http://localhost:5000/api/companies/${companyId}`);
       setCompanies((prevCompanies) => {
         const updatedCompanies = prevCompanies.filter((company) => company._id !== companyId);
-        localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Update localStorage after deletion
-        return updatedCompanies; // Return the updated list
+        localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Persist the updated companies
+        return updatedCompanies;
       });
     } catch (error) {
       console.error("Error deleting company:", error);
@@ -94,12 +122,13 @@ export const CompanyProvider = ({ children }) => {
         companies,
         setCompanies,
         fetchCompanies,
-        addCommunication,
         addCompany,
         removeCommunication,
-        deleteCompany, // Expose deleteCompany
-        loading,       // Expose loading state
-        error,         // Expose error state
+        updateCompanyCommunication,
+        addCommunication,
+        deleteCompany,
+        loading,
+        error,
       }}
     >
       {children}

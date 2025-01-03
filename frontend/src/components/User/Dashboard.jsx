@@ -18,7 +18,7 @@ const Dashboard = () => {
     const communicationDate = new Date(date);
     if (communicationDate < today) return "overdue";
     if (communicationDate.toDateString() === today.toDateString()) return "dueToday";
-    return "upcoming";
+    return "upcoming"; // For future communications
   };
 
   useEffect(() => {
@@ -77,7 +77,7 @@ const Dashboard = () => {
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [eventDetails, setEventDetails] = useState(null);
-  
+
   const handleEventClick = (info) => {
     const event = info.event.extendedProps;
     setEventDetails({
@@ -86,37 +86,38 @@ const Dashboard = () => {
     });
     setShowEventModal(true);
   };
-  
-
 
   const handleMarkAsCompleted = (companyId, communicationIndex) => {
     const company = companies.find((company) => company._id === companyId);
     if (!company || !company.communications) return;
 
     const communication = company.communications[communicationIndex];
-
     const updatedCompany = { ...company };
     updatedCompany.communications = company.communications.map((comm, index) => {
       if (index === communicationIndex) {
-        return { ...comm, status: "completed" };
+        return { ...comm, status: "completed" }; // Mark as completed
       }
       return comm;
     });
 
-    const updatedCompanies = companies.map((comp) => 
-      comp.id === companyId ? updatedCompany : comp
+    const updatedCompanies = companies.map((comp) =>
+      comp._id === companyId ? updatedCompany : comp
     );
 
     updateCompanyCommunication(updatedCompanies);
 
+    // Update the calendar events to reflect the completed status
     const updatedCalendarEvents = calendarEvents.map((event) => {
       if (event.eventId === `${companyId}-${communication.date}-${communication.description}`) {
-        return { ...event, backgroundColor: "green" };
+        return { ...event, backgroundColor: "green" }; // Change color to green
       }
       return event;
     });
 
     setCalendarEvents(updatedCalendarEvents);
+
+    // Also update the communications list to show completed status
+    setCompanyCommunications(updatedCompany.communications);
   };
 
   const handleShowCommunications = () => {
@@ -181,11 +182,15 @@ const Dashboard = () => {
           <h2>Last 5 Communications</h2>
           <ul>
             {companyCommunications
+              .filter((comm) => getCommunicationStatus(comm.date) !== "upcoming" || comm.status === "completed")
               .slice(-5)
               .map((comm, index) => (
                 <li key={index}>
                   {comm.type} on {comm.date} - {comm.description}
                   {comm.status === "completed" && <span> (Completed)</span>}
+                  {getCommunicationStatus(comm.date) === "upcoming" && comm.status !== "completed" && (
+                    <span> (To be completed)</span>
+                  )}
                 </li>
               ))}
           </ul>
@@ -195,11 +200,15 @@ const Dashboard = () => {
           <h2>Next 5 Communications</h2>
           <ul>
             {companyCommunications
+              .filter((comm) => getCommunicationStatus(comm.date) === "upcoming" && comm.status !== "completed")
               .slice(0, 5)
               .map((comm, index) => (
                 <li key={index}>
                   {comm.type} on {comm.date} - {comm.description}
                   {comm.status === "completed" && <span> (Completed)</span>}
+                  {getCommunicationStatus(comm.date) === "upcoming" && comm.status !== "completed" && (
+                    <span> (To be completed)</span>
+                  )}
                 </li>
               ))}
           </ul>
@@ -240,15 +249,15 @@ const Dashboard = () => {
         </div>
       )}
       {showEventModal && eventDetails && (
-  <div className="modal">
-    <div className="modal-content">
-      <h2>Communication Details</h2>
-      <p><strong>Company:</strong> {eventDetails.companyName}</p>
-      <p><strong>Description:</strong> {eventDetails.description}</p>
-      <button onClick={() => setShowEventModal(false)}>Close</button>
-    </div>
-  </div>
-)}
+        <div className="modal">
+          <div className="modal-content">
+            <h2>Communication Details</h2>
+            <p><strong>Company:</strong> {eventDetails.companyName}</p>
+            <p><strong>Description:</strong> {eventDetails.description}</p>
+            <button onClick={() => setShowEventModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
 
       {/* Communication Performed Modal */}
       {showModal && (
@@ -275,7 +284,7 @@ const Dashboard = () => {
                         {comm.status !== "completed" && getCommunicationStatus(comm.date) === "overdue" ? (
                           <button onClick={() => handleMarkAsCompleted(selectedCompanyId, index)}>Mark as Complete</button>
                         ) : (
-                          <span>Completed</span>
+                          comm.status === "completed" && <span>Completed</span>
                         )}
                       </td>
                     </tr>

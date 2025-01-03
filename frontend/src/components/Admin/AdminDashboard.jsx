@@ -1,114 +1,164 @@
-import React, { useState, useEffect } from "react";
-import { useCompanyContext } from "../../context/CompanyContext";
-import CompanyManagement from "./CompanyManagement"; // Import CompanyManagement
-import CommunicationMethodManagement from "./CommunicationMethodManagement"; // Import CommunicationMethodManagement
+import React, { useState, useEffect } from 'react';
+import { useCompanyContext } from "../../context/CompanyContext"; // Import Context
+import { Link, useNavigate } from "react-router-dom";
+import CompanyManagement from './CompanyManagement'; // Import Company Management Component
+import CommunicationMethodManagement from './CommunicationMethodManagement'; // Import Communication Method Management Component
 import './AdminDashboard.css';
-import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const AdminDashboard = () => {
-  const { companies, addCommunication, removeCommunication, fetchCompanies, setCompanies } = useCompanyContext();
-  const [activePage, setActivePage] = useState("welcome");
+  const { companies, updateCompanyCommunication } = useCompanyContext();  // Use context to get companies
   const [newCommunication, setNewCommunication] = useState({
-    companyId: "",
     type: "",
     date: "",
     description: "",
+    companyId: "", // New field for company selection
   });
-  const [loading, setLoading] = useState(true); // Loading state for companies
+  const [activeSection, setActiveSection] = useState('currentCompanies'); // Track active section
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate(); // Hook to navigate programmatically
 
-  // Fetch companies when component mounts
+  // Load saved company data (including communications) from localStorage on component mount
   useEffect(() => {
-    const loadCompanies = async () => {
-      await fetchCompanies(); // Fetch the latest companies from the database
-      setLoading(false); // Set loading to false after fetching
-    };
-    loadCompanies();
-  }, [fetchCompanies]);
+    const savedCompanies = JSON.parse(localStorage.getItem('companies'));
+    if (savedCompanies) {
+      updateCompanyCommunication(savedCompanies);  // Update context with saved data
+    }
+  }, []); // Runs only once on component mount.
 
-  // Handle form change for logging communication
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCommunication((prevComm) => ({
-      ...prevComm,
-      [name]: value,
-    }));
-  };
+  // Update localStorage every time companies data (including communications) changes
+  useEffect(() => {
+    if (companies.length > 0) {
+      localStorage.setItem('companies', JSON.stringify(companies));  // Save companies (with communications) to localStorage
+    }
+  }, [companies]);  // Runs every time companies state changes.
 
-  // Handle Logout
-  const handleLogout = () => {
-    // Clear authentication data and navigate to login page
-    localStorage.removeItem("authToken");
-    navigate("/"); // Use the navigate function from useNavigate
-  };
-
-  // Handle submit for logging communication
+  // Handle Communication Form Submit
   const handleCommunicationSubmit = (e) => {
     e.preventDefault();
 
-    // Ensure that all fields are filled
     if (!newCommunication.type || !newCommunication.date || !newCommunication.description || !newCommunication.companyId) {
       alert("Please fill in all fields.");
       return;
     }
 
-    // Add the new communication to the selected company using addCommunication
-    addCommunication(newCommunication.companyId, {
-      type: newCommunication.type,
-      date: newCommunication.date,
-      description: newCommunication.description,
-    });
-
-    // Optionally reset form fields
-    setNewCommunication({
-      companyId: "",
-      type: "",
-      date: "",
-      description: "",
-    });
-
-    // Update the companies list after adding communication (non-mutating update)
+    // Add communication to selected company
     const updatedCompanies = companies.map((company) => {
       if (company._id === newCommunication.companyId) {
         return {
           ...company,
-          communications: Array.isArray(company.communications)
-            ? [...company.communications, {
-                type: newCommunication.type,
-                date: newCommunication.date,
-                description: newCommunication.description,
-            }]
-            : [{
-                type: newCommunication.type,
-                date: newCommunication.date,
-                description: newCommunication.description,
-            }],
+          communications: [
+            ...(company.communications || []),
+            {
+              ...newCommunication,
+              status: "pending", // Initial status
+              highlight: "upcoming", // Highlight for upcoming communications
+            },
+          ],
         };
       }
       return company;
     });
 
-    setCompanies(updatedCompanies); // Update the companies state
+    // Update the company context and save to localStorage
+    updateCompanyCommunication(updatedCompanies);
+    setNewCommunication({ type: "", date: "", description: "", companyId: "" }); // Reset form fields
   };
 
-  // Handle Delete Communication
-  const handleDeleteCommunication = (companyId, commId) => {
-    removeCommunication(companyId, commId); // Make sure removeCommunication is available from context
+  // Delete a communication from a company
+  const handleDeleteCommunication = (companyId, communicationIdx) => {
+    const updatedCompanies = companies.map((company) => {
+      if (company._id === companyId) {
+        return {
+          ...company,
+          communications: company.communications.filter((_, idx) => idx !== communicationIdx),
+        };
+      }
+      return company;
+    });
+
+    // Update the company context and localStorage
+    updateCompanyCommunication(updatedCompanies);
   };
 
-  // Handle Delete Company
-  const handleDeleteCompany = (companyId) => {
-    deleteCompany(companyId); // You'll need to define `deleteCompany` in your context
-    fetchCompanies(); // Refetch companies after deletion
+  // Handle Logout
+  const handleLogout = () => {
+    // Clear authentication data (e.g., token, user info)
+    localStorage.removeItem("authToken");
+    // Do NOT remove communication data when logging out
+    // localStorage.removeItem("newCommunication"); // This line should be commented out to keep data
+    // Redirect to login page
+    navigate("/");
   };
 
-  // Render content based on active page
-  const renderContent = () => {
-    switch (activePage) {
-      case "home":
-        return (
-          <div>
+  return (
+    <div className="admin-dashboard">
+      <header className="admin-header">
+        <h1>Admin Dashboard</h1>
+        <p>Manage companies and ensure they reflect on the User Dashboard.</p>
+        <button className="logout-btn" onClick={handleLogout}>Logout</button> {/* Logout Button */}
+      </header>
+
+      <div className="admin-content">
+        <nav>
+          <ul className="admin-nav-list">
+            <li>
+              <Link
+                className="admin-nav-link"
+                to="#"
+                onClick={() => setActiveSection('manageCompanies')}
+              >
+                Manage Companies
+              </Link>
+            </li>
+            <li>
+              <Link
+                className="admin-nav-link"
+                to="#"
+                onClick={() => setActiveSection('manageCommunications')}
+              >
+                Manage Communications
+              </Link>
+            </li>
+            <li>
+              <Link
+                className="admin-nav-link"
+                to="#"
+                onClick={() => setActiveSection('currentCompanies')}
+              >
+                Current Companies
+              </Link>
+            </li>
+            <li>
+              <Link
+                className="admin-nav-link"
+                to="#"
+                onClick={() => setActiveSection('logCommunication')}
+              >
+                Log Communication
+              </Link>
+            </li>
+          </ul>
+        </nav>
+
+        {/* Render Manage Companies Section */}
+        {activeSection === 'manageCompanies' && (
+          <section className="admin-companies">
+            <h2>Manage Companies</h2>
+            <CompanyManagement /> {/* Render CompanyManagement Component */}
+          </section>
+        )}
+
+        {/* Render Manage Communications Section */}
+        {activeSection === 'manageCommunications' && (
+          <section className="admin-communications">
+            <h2>Manage Communications</h2>
+            <CommunicationMethodManagement /> {/* Render CommunicationMethodManagement Component */}
+          </section>
+        )}
+
+        {/* Render Current Companies Section */}
+        {activeSection === 'currentCompanies' && (
+          <section className="admin-companies">
             <h2>Current Companies</h2>
             {companies.length === 0 ? (
               <p>No companies have been added yet.</p>
@@ -120,16 +170,11 @@ const AdminDashboard = () => {
                     <p>{company.details}</p>
                     <h4>Communications</h4>
                     <ul>
-                      {company.communications && Array.isArray(company.communications) && company.communications.map((comm, idx) => (
-                        <li key={comm._id || idx}>
+                      {company.communications?.map((comm, idx) => (
+                        <li key={idx}>
                           <p>{comm.type} on {comm.date}</p>
                           <p>{comm.description}</p>
-                          <button
-                            className="delete-btn"
-                            onClick={() => handleDeleteCommunication(company._id, comm._id)}
-                          >
-                            Delete
-                          </button>
+                          <button onClick={() => handleDeleteCommunication(company._id, idx)}>Delete</button>
                         </li>
                       ))}
                     </ul>
@@ -137,19 +182,19 @@ const AdminDashboard = () => {
                 ))}
               </ul>
             )}
-          </div>
-        );
-      case "logCommunication":
-        return (
-          <div className="admin-log-communication">
+          </section>
+        )}
+
+        {/* Render Log Communication Form Section */}
+        {activeSection === 'logCommunication' && (
+          <section className="admin-log-communication">
             <h2>Log Communication</h2>
             <form onSubmit={handleCommunicationSubmit}>
               <div>
                 <label>Company</label>
                 <select
-                  name="companyId"
                   value={newCommunication.companyId}
-                  onChange={handleInputChange}
+                  onChange={(e) => setNewCommunication({ ...newCommunication, companyId: e.target.value })}
                   required
                 >
                   <option value="">Select Company</option>
@@ -163,9 +208,8 @@ const AdminDashboard = () => {
               <div>
                 <label>Communication Type</label>
                 <select
-                  name="type"
                   value={newCommunication.type}
-                  onChange={handleInputChange}
+                  onChange={(e) => setNewCommunication({ ...newCommunication, type: e.target.value })}
                   required
                 >
                   <option value="">Select Communication Type</option>
@@ -180,75 +224,22 @@ const AdminDashboard = () => {
                 <label>Date</label>
                 <input
                   type="date"
-                  name="date"
                   value={newCommunication.date}
-                  onChange={handleInputChange}
+                  onChange={(e) => setNewCommunication({ ...newCommunication, date: e.target.value })}
                   required
                 />
               </div>
               <div>
                 <label>Description</label>
                 <textarea
-                  name="description"
                   value={newCommunication.description}
-                  onChange={handleInputChange}
+                  onChange={(e) => setNewCommunication({ ...newCommunication, description: e.target.value })}
                   required
                 />
               </div>
               <button type="submit">Log Communication</button>
             </form>
-          </div>
-        );
-      case "manageCompanies":
-        return <CompanyManagement />; // Render CompanyManagement Component
-      case "manageCommunicationMethods":
-        return <CommunicationMethodManagement />; // Render CommunicationMethodManagement Component
-      default:
-        return (
-          <div>
-            <h2>Welcome to the Admin Dashboard</h2>
-            <p>Select an option from the left menu to get started.</p>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className="admin-dashboard">
-      <header>
-        <h1>Admin Dashboard</h1>
-        <button className="logout-btn" onClick={handleLogout}>
-          Log out
-        </button>
-      </header>
-      <div className="admin-content">
-        {loading ? (
-          <div>Loading companies...</div>
-        ) : (
-          <>
-            {/* Sidebar Menu */}
-            <nav className="admin-sidebar">
-              <ul>
-                <li>
-                  <button onClick={() => setActivePage("home")}>Home</button>
-                </li>
-                <li>
-                  <button onClick={() => setActivePage("logCommunication")}>Log Communication</button>
-                </li>
-                <li>
-                  <button onClick={() => setActivePage("manageCompanies")}>Manage Companies</button>
-                </li>
-                <li>
-                  <button onClick={() => setActivePage("manageCommunicationMethods")}>
-                    Manage Communication Methods
-                  </button>
-                </li>
-              </ul>
-            </nav>
-
-            {/* Target Div for Dynamic Content */}
-            <div className="admin-target-content">{renderContent()}</div>
-          </>
+          </section>
         )}
       </div>
     </div>
