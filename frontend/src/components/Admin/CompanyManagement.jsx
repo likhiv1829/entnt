@@ -25,7 +25,7 @@ const CompanyManagement = () => {
     const fetchCompanies = async () => {
       try {
         const data = await getCompanies();
-        setCompanies(data);
+        setCompanies(data);  // Update local state with companies from API
       } catch (err) {
         console.error('Error fetching companies:', err);
         setError('Failed to fetch companies.');
@@ -55,19 +55,17 @@ const CompanyManagement = () => {
         updatedCompany = await updateCompany(newCompany._id, newCompany);
         console.log('Updated company:', updatedCompany);
 
-        // Optimistically update local companies list
-        setCompanies((prevCompanies) => 
-          prevCompanies.map((company) => 
-            company._id === updatedCompany._id ? updatedCompany : company
-          )
-        );
+        // Re-fetch companies from API after update
+        const data = await getCompanies();
+        setCompanies(data);  // Set updated companies list
       } else {
         // Create new company
         const createdCompany = await createCompany(newCompany);
         console.log('Created company:', createdCompany);
 
-        // Optimistically add new company
-        setCompanies((prevCompanies) => [...prevCompanies, createdCompany]);
+        // Re-fetch companies from API after creation
+        const data = await getCompanies();
+        setCompanies(data);  // Set updated companies list
       }
 
       // Reset form after submission
@@ -91,17 +89,15 @@ const CompanyManagement = () => {
   // Delete company
   const handleDelete = async (id) => {
     try {
-      const updatedCompanies = companies.filter(company => company._id !== id);
-      setCompanies(updatedCompanies);
-
+      // Delete company from API
       await deleteCompany(id);
+
+      // Re-fetch companies from API after deletion
+      const data = await getCompanies();
+      setCompanies(data);  // Set updated companies list
     } catch (err) {
       console.error('Error deleting company:', err);
       setError('Failed to delete company.');
-
-      // Rollback if deletion fails
-      const originalCompanies = await getCompanies();
-      setCompanies(originalCompanies);
     }
   };
 
@@ -192,24 +188,21 @@ const CompanyManagement = () => {
             <button onClick={() => handleDelete(company._id)}>Delete</button>
 
             {/* Communications */}
-            {/* Communications */}
-<h5>Communications</h5>
-<ul>
-{company.communications && Array.isArray(company.communications) && company.communications.length > 0 ? (
-  company.communications.map((comm, idx) => (
-    <li key={idx}>
-      {comm.type} on {comm.date}: {comm.description}
-      <button onClick={() => handleDeleteCommunication(company._id, comm._id)}>
-        Delete
-      </button>
-    </li>
-  ))
-) : (
-  <p>No communications available</p>
-)}
-
-</ul>
-
+            <h5>Communications</h5>
+            <ul>
+              {company.communications && Array.isArray(company.communications) && company.communications.length > 0 ? (
+                company.communications.map((comm, idx) => (
+                  <li key={idx}>
+                    {comm.type} on {comm.date}: {comm.description}
+                    <button onClick={() => handleDeleteCommunication(company._id, comm._id)}>
+                      Delete
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <p>No communications available</p>
+              )}
+            </ul>
           </li>
         ))}
       </ul>

@@ -6,7 +6,7 @@ import CommunicationMethodManagement from './CommunicationMethodManagement'; // 
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
-  const { companies, updateCompanyCommunication } = useCompanyContext();  // Use context to get companies
+  const { companies, updateCompanyCommunication, addCompany, deleteCompany } = useCompanyContext();  // Use context to get companies
   const [newCommunication, setNewCommunication] = useState({
     type: "",
     date: "",
@@ -16,21 +16,6 @@ const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState('currentCompanies'); // Track active section
 
   const navigate = useNavigate(); // Hook to navigate programmatically
-
-  // Load saved company data (including communications) from localStorage on component mount
-  useEffect(() => {
-    const savedCompanies = JSON.parse(localStorage.getItem('companies'));
-    if (savedCompanies) {
-      updateCompanyCommunication(savedCompanies);  // Update context with saved data
-    }
-  }, []); // Runs only once on component mount.
-
-  // Update localStorage every time companies data (including communications) changes
-  useEffect(() => {
-    if (companies.length > 0) {
-      localStorage.setItem('companies', JSON.stringify(companies));  // Save companies (with communications) to localStorage
-    }
-  }, [companies]);  // Runs every time companies state changes.
 
   // Handle Communication Form Submit
   const handleCommunicationSubmit = (e) => {
@@ -61,6 +46,7 @@ const AdminDashboard = () => {
 
     // Update the company context and save to localStorage
     updateCompanyCommunication(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies)); // Save updated companies to localStorage
     setNewCommunication({ type: "", date: "", description: "", companyId: "" }); // Reset form fields
   };
 
@@ -78,6 +64,16 @@ const AdminDashboard = () => {
 
     // Update the company context and localStorage
     updateCompanyCommunication(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies)); // Save updated companies to localStorage
+  };
+
+  // Delete a company
+  const handleDeleteCompany = (companyId) => {
+    const updatedCompanies = companies.filter((company) => company._id !== companyId);
+
+    // Update the company context and localStorage
+    updateCompanyCommunication(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies)); // Save updated companies to localStorage
   };
 
   // Handle Logout
@@ -89,6 +85,15 @@ const AdminDashboard = () => {
     // Redirect to login page
     navigate("/");
   };
+
+  // Effect to ensure the "Current Companies" section reflects the updated companies list
+  useEffect(() => {
+    // Fetch saved companies from localStorage on every component render
+    const savedCompanies = JSON.parse(localStorage.getItem('companies'));
+    if (savedCompanies) {
+      updateCompanyCommunication(savedCompanies);  // Update context with saved data from localStorage
+    }
+  }, [companies]);  // Add companies as a dependency to re-render when the company list changes
 
   return (
     <div className="admin-dashboard">
@@ -178,6 +183,7 @@ const AdminDashboard = () => {
                         </li>
                       ))}
                     </ul>
+                    <button onClick={() => handleDeleteCompany(company._id)}>Delete Company</button>
                   </li>
                 ))}
               </ul>

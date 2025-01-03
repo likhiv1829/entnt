@@ -16,11 +16,13 @@ export const CompanyProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api/companies";
+
   // Fetch companies from the backend and store in localStorage
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:5000/api/companies", { timeout: 5000 });
+      const response = await axios.get(API_URL, { timeout: 5000 });
       setCompanies(response.data);
       localStorage.setItem("companies", JSON.stringify(response.data)); // Save to localStorage
     } catch (error) {
@@ -41,18 +43,23 @@ export const CompanyProvider = ({ children }) => {
       setLoading(false);
     }
   };
-  
+
+  // Fetch companies only once when the component mounts
   useEffect(() => {
-    // Only fetch companies if they're not already available in localStorage
-    if (companies.length === 0) {
+    fetchCompanies();
+
+    // Periodic refresh of company data (every 5 minutes)
+    const intervalId = setInterval(() => {
       fetchCompanies();
-    }
-  }, [companies.length]); // Only runs if companies are empty.
+    }, 5 * 60 * 1000); // 5 minutes in milliseconds
+
+    return () => clearInterval(intervalId); // Clean up interval on unmount
+  }, []); // Empty dependency array ensures this effect runs only once on mount
 
   // Add company
   const addCompany = async (newCompany) => {
     try {
-      const response = await axios.post("/api/companies", newCompany);
+      const response = await axios.post(API_URL, newCompany);
       setCompanies((prev) => {
         const updatedCompanies = [...prev, response.data];
         localStorage.setItem("companies", JSON.stringify(updatedCompanies));
@@ -78,14 +85,15 @@ export const CompanyProvider = ({ children }) => {
     setCompanies(updatedCompanies);
     localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Save updated companies
   };
-  
+
+  // Add communication
   const addCommunication = (companyId, communication) => {
     setCompanies((prevCompanies) => {
       const updatedCompanies = prevCompanies.map((company) =>
         company._id === companyId
           ? {
               ...company,
-              communications: Array.isArray(company.communications)
+              communications: company.communications
                 ? [...company.communications, communication]
                 : [communication],
             }
@@ -95,7 +103,8 @@ export const CompanyProvider = ({ children }) => {
       return updatedCompanies;
     });
   };
-  
+
+  // Update company communication
   const updateCompanyCommunication = (updatedCompanies) => {
     setCompanies(updatedCompanies);
     localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Persist the updated companies
@@ -104,7 +113,7 @@ export const CompanyProvider = ({ children }) => {
   // Delete company
   const deleteCompany = async (companyId) => {
     try {
-      await axios.delete(`http://localhost:5000/api/companies/${companyId}`);
+      await axios.delete(`${API_URL}/${companyId}`);
       setCompanies((prevCompanies) => {
         const updatedCompanies = prevCompanies.filter((company) => company._id !== companyId);
         localStorage.setItem("companies", JSON.stringify(updatedCompanies)); // Persist the updated companies
