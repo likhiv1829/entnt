@@ -4,6 +4,7 @@ import {
   createCompany,
   updateCompany,
   deleteCompany,
+  deleteCommunication,
 } from '../../utils/api'; // Replace with actual API utility path
 
 const CompanyManagement = () => {
@@ -16,23 +17,30 @@ const CompanyManagement = () => {
     emails: '',
     phoneNumbers: '',
     comments: '',
-    communicationPeriodicity: 14,
+    communicationPeriodicity: 'Does not repeat',
+    customRecurrence: {
+      frequency: 1,
+      unit: 'week',
+      endDate: '',
+      occurrences: 0,
+    },
   });
   const [error, setError] = useState('');
 
-  // Fetch companies on component mount
+  // Fetch companies on component mount and after adding/deleting/updating
+  const fetchCompanies = async () => {
+    try {
+      const data = await getCompanies();
+      setCompanies(data);  // Update local state with companies from API
+    } catch (err) {
+      console.error('Error fetching companies:', err);
+      setError('Failed to fetch companies.');
+    }
+  };
+
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const data = await getCompanies();
-        setCompanies(data);  // Update local state with companies from API
-      } catch (err) {
-        console.error('Error fetching companies:', err);
-        setError('Failed to fetch companies.');
-      }
-    };
     fetchCompanies();
-  }, []);
+  }, []); // Fetch companies only once on initial render
 
   // Handle input changes for new or updating company
   const handleCompanyChange = (e) => {
@@ -43,30 +51,50 @@ const CompanyManagement = () => {
     }));
   };
 
+  const handleCustomRecurrenceChange = (e) => {
+    const { name, value } = e.target;
+    setNewCompany((prevCompany) => ({
+      ...prevCompany,
+      customRecurrence: {
+        ...prevCompany.customRecurrence,
+        [name]: value,
+      },
+    }));
+  };
+
+  // Handle communication periodicity selection
+  const handleRecurrenceChange = (e) => {
+    setNewCompany((prevCompany) => ({
+      ...prevCompany,
+      communicationPeriodicity: e.target.value,
+    }));
+  };
+
   // Add or update company
   const handleCompanySubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
+      // Validate inputs before submission
+      if (!newCompany.name || !newCompany.location) {
+        setError('Company name and location are required.');
+        return;
+      }
+
       let updatedCompany;
 
       if (newCompany._id) {
         // Update company
         updatedCompany = await updateCompany(newCompany._id, newCompany);
         console.log('Updated company:', updatedCompany);
-
-        // Re-fetch companies from API after update
-        const data = await getCompanies();
-        setCompanies(data);  // Set updated companies list
       } else {
         // Create new company
         const createdCompany = await createCompany(newCompany);
         console.log('Created company:', createdCompany);
-
-        // Re-fetch companies from API after creation
-        const data = await getCompanies();
-        setCompanies(data);  // Set updated companies list
       }
+
+      // Re-fetch companies from API after creation or update
+      fetchCompanies();
 
       // Reset form after submission
       setNewCompany({
@@ -77,12 +105,22 @@ const CompanyManagement = () => {
         emails: '',
         phoneNumbers: '',
         comments: '',
-        communicationPeriodicity: 14,
+        communicationPeriodicity: 'Does not repeat',
+        customRecurrence: {
+          frequency: 1,
+          unit: 'week',
+          endDate: '',
+          occurrences: 0,
+        },
       });
 
     } catch (err) {
       console.error('Error saving company:', err);
-      setError('Failed to save company.');
+      if (err.response && err.response.data) {
+        setError(`Failed to save company: ${err.response.data.message || 'Unknown error'}`);
+      } else {
+        setError(`Failed to save company. ${err.message || ''}`);
+      }
     }
   };
 
@@ -93,16 +131,39 @@ const CompanyManagement = () => {
       await deleteCompany(id);
 
       // Re-fetch companies from API after deletion
-      const data = await getCompanies();
-      setCompanies(data);  // Set updated companies list
+      fetchCompanies();
     } catch (err) {
       console.error('Error deleting company:', err);
       setError('Failed to delete company.');
     }
   };
 
-  const handleDeleteCommunication = (companyId, commId) => {
-    removeCommunication(companyId, commId);  // Call the function from context
+  // Delete communication from company
+  const handleDeleteCommunication = async (companyId, commId) => {
+    try {
+      // Delete communication from API
+      await deleteCommunication(companyId, commId);
+
+      // Re-fetch companies from API after communication deletion
+      fetchCompanies();
+    } catch (err) {
+      console.error('Error deleting communication:', err);
+      setError('Failed to delete communication.');
+    }
+  };
+
+  // Format the communicationPeriodicity
+  const formatCommunicationPeriodicity = (periodicity, customRecurrence) => {
+    if (periodicity === 'Does not repeat') return 'Does not repeat';
+    if (periodicity === 'Daily') return 'Daily';
+    if (periodicity === 'Weekly on Friday') return 'Weekly on Friday';
+    if (periodicity === 'Monthly on the first Friday') return 'Monthly on the first Friday';
+    if (periodicity === 'Annually on January 3') return 'Annually on January 3';
+    if (periodicity === 'Every weekday (Monday to Friday)') return 'Every weekday (Monday to Friday)';
+    if (periodicity === 'Custom...') {
+      return `Repeat every ${customRecurrence.frequency} ${customRecurrence.unit} ${customRecurrence.endDate ? `until ${customRecurrence.endDate}` : `for ${customRecurrence.occurrences} occurrences`}`;
+    }
+    return '';
   };
 
   return (
@@ -156,14 +217,72 @@ const CompanyManagement = () => {
             onChange={handleCompanyChange}
             placeholder="Comments"
           ></textarea>
-          <input
-            type="number"
-            name="communicationPeriodicity"
-            value={newCompany.communicationPeriodicity}
-            onChange={handleCompanyChange}
-            placeholder="Communication Periodicity (days)"
-            required
-          />
+
+          {/* Communication Periodicity */}
+          <label>
+            Communication Periodicity:
+            <select
+              name="communicationPeriodicity"
+              value={newCompany.communicationPeriodicity}
+              onChange={handleRecurrenceChange}
+            >
+              <option value="Does not repeat">Does not repeat</option>
+              <option value="Daily">Daily</option>
+              <option value="Weekly on Friday">Weekly on Friday</option>
+              <option value="Monthly on the first Friday">Monthly on the first Friday</option>
+              <option value="Annually on January 3">Annually on January 3</option>
+              <option value="Every weekday (Monday to Friday)">Every weekday (Monday to Friday)</option>
+              <option value="Custom...">Custom...</option>
+            </select>
+          </label>
+
+          {/* Custom Recurrence Fields */}
+          {newCompany.communicationPeriodicity === 'Custom...' && (
+            <div>
+              <label>
+                Repeat every:
+                <input
+                  type="number"
+                  name="frequency"
+                  value={newCompany.customRecurrence.frequency}
+                  onChange={handleCustomRecurrenceChange}
+                  required
+                />
+              </label>
+              <label>
+                <select
+                  name="unit"
+                  value={newCompany.customRecurrence.unit}
+                  onChange={handleCustomRecurrenceChange}
+                  required
+                >
+                  <option value="week">week(s)</option>
+                  <option value="month">month(s)</option>
+                  <option value="year">year(s)</option>
+                </select>
+              </label>
+              <label>
+                Repeat on:
+                <input
+                  type="date"
+                  name="endDate"
+                  value={newCompany.customRecurrence.endDate}
+                  onChange={handleCustomRecurrenceChange}
+                />
+              </label>
+              <label>
+                After:
+                <input
+                  type="number"
+                  name="occurrences"
+                  value={newCompany.customRecurrence.occurrences}
+                  onChange={handleCustomRecurrenceChange}
+                />
+                occurrences
+              </label>
+            </div>
+          )}
+
           <button type="submit">
             {newCompany._id ? 'Update Company' : 'Add Company'}
           </button>
@@ -183,7 +302,7 @@ const CompanyManagement = () => {
             <p>LinkedIn: {company.linkedInProfile}</p>
             <p>Emails: {company.emails}</p>
             <p>Phone Numbers: {company.phoneNumbers}</p>
-            <p>Communication Periodicity: {company.communicationPeriodicity} days</p>
+            <p>Communication Periodicity: {formatCommunicationPeriodicity(company.communicationPeriodicity, company.customRecurrence)}</p>
             <button onClick={() => setNewCompany(company)}>Edit</button>
             <button onClick={() => handleDelete(company._id)}>Delete</button>
 

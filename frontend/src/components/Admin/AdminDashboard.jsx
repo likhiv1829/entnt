@@ -6,16 +6,23 @@ import CommunicationMethodManagement from './CommunicationMethodManagement'; // 
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
-  const { companies, updateCompanyCommunication, addCompany, deleteCompany } = useCompanyContext();  // Use context to get companies
+  const { companies, updateCompanyCommunication, addCompany, deleteCompany, fetchCompanies, loading, error } = useCompanyContext();
   const [newCommunication, setNewCommunication] = useState({
     type: "",
     date: "",
     description: "",
-    companyId: "", // New field for company selection
+    companyId: "",
   });
   const [activeSection, setActiveSection] = useState('currentCompanies'); // Track active section
 
   const navigate = useNavigate(); // Hook to navigate programmatically
+
+  // Fetch companies when the component loads or when the context changes
+  useEffect(() => {
+    if (companies.length === 0) {
+      fetchCompanies(); // Fetch from the backend if the companies array is empty
+    }
+  }, [companies, fetchCompanies]);
 
   // Handle Communication Form Submit
   const handleCommunicationSubmit = (e) => {
@@ -26,7 +33,6 @@ const AdminDashboard = () => {
       return;
     }
 
-    // Add communication to selected company
     const updatedCompanies = companies.map((company) => {
       if (company._id === newCommunication.companyId) {
         return {
@@ -44,9 +50,7 @@ const AdminDashboard = () => {
       return company;
     });
 
-    // Update the company context and save to localStorage
     updateCompanyCommunication(updatedCompanies);
-    localStorage.setItem('companies', JSON.stringify(updatedCompanies)); // Save updated companies to localStorage
     setNewCommunication({ type: "", date: "", description: "", companyId: "" }); // Reset form fields
   };
 
@@ -62,45 +66,26 @@ const AdminDashboard = () => {
       return company;
     });
 
-    // Update the company context and localStorage
     updateCompanyCommunication(updatedCompanies);
-    localStorage.setItem('companies', JSON.stringify(updatedCompanies)); // Save updated companies to localStorage
   };
 
   // Delete a company
   const handleDeleteCompany = (companyId) => {
-    const updatedCompanies = companies.filter((company) => company._id !== companyId);
-
-    // Update the company context and localStorage
-    updateCompanyCommunication(updatedCompanies);
-    localStorage.setItem('companies', JSON.stringify(updatedCompanies)); // Save updated companies to localStorage
+    deleteCompany(companyId);
   };
 
   // Handle Logout
   const handleLogout = () => {
-    // Clear authentication data (e.g., token, user info)
     localStorage.removeItem("authToken");
-    // Do NOT remove communication data when logging out
-    // localStorage.removeItem("newCommunication"); // This line should be commented out to keep data
-    // Redirect to login page
-    navigate("/");
+    navigate("/"); // Redirect to login or homepage after logout
   };
-
-  // Effect to ensure the "Current Companies" section reflects the updated companies list
-  useEffect(() => {
-    // Fetch saved companies from localStorage on every component render
-    const savedCompanies = JSON.parse(localStorage.getItem('companies'));
-    if (savedCompanies) {
-      updateCompanyCommunication(savedCompanies);  // Update context with saved data from localStorage
-    }
-  }, [companies]);  // Add companies as a dependency to re-render when the company list changes
 
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
         <h1>Admin Dashboard</h1>
         <p>Manage companies and ensure they reflect on the User Dashboard.</p>
-        <button className="logout-btn" onClick={handleLogout}>Logout</button> {/* Logout Button */}
+        <button className="logout-btn" onClick={handleLogout}>Logout</button>
       </header>
 
       <div className="admin-content">
@@ -145,27 +130,15 @@ const AdminDashboard = () => {
           </ul>
         </nav>
 
-        {/* Render Manage Companies Section */}
-        {activeSection === 'manageCompanies' && (
-          <section className="admin-companies">
-            <h2>Manage Companies</h2>
-            <CompanyManagement /> {/* Render CompanyManagement Component */}
-          </section>
-        )}
-
-        {/* Render Manage Communications Section */}
-        {activeSection === 'manageCommunications' && (
-          <section className="admin-communications">
-            <h2>Manage Communications</h2>
-            <CommunicationMethodManagement /> {/* Render CommunicationMethodManagement Component */}
-          </section>
-        )}
-
         {/* Render Current Companies Section */}
         {activeSection === 'currentCompanies' && (
           <section className="admin-companies">
             <h2>Current Companies</h2>
-            {companies.length === 0 ? (
+            {loading ? (
+              <p>Loading...</p>
+            ) : error ? (
+              <p>{error}</p>
+            ) : companies.length === 0 ? (
               <p>No companies have been added yet.</p>
             ) : (
               <ul className="company-list">
@@ -191,59 +164,51 @@ const AdminDashboard = () => {
           </section>
         )}
 
-        {/* Render Log Communication Form Section */}
+        {/* Render Manage Companies Section */}
+        {activeSection === 'manageCompanies' && <CompanyManagement />}
+        
+        {/* Render Manage Communications Section */}
+        {activeSection === 'manageCommunications' && <CommunicationMethodManagement />}
+
+        {/* Render Log Communication Section */}
         {activeSection === 'logCommunication' && (
-          <section className="admin-log-communication">
-            <h2>Log Communication</h2>
+          <section className="log-communication">
+            <h2>Log a Communication</h2>
             <form onSubmit={handleCommunicationSubmit}>
-              <div>
-                <label>Company</label>
-                <select
-                  value={newCommunication.companyId}
-                  onChange={(e) => setNewCommunication({ ...newCommunication, companyId: e.target.value })}
-                  required
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company._id} value={company._id}>
-                      {company.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label>Communication Type</label>
-                <select
-                  value={newCommunication.type}
-                  onChange={(e) => setNewCommunication({ ...newCommunication, type: e.target.value })}
-                  required
-                >
-                  <option value="">Select Communication Type</option>
-                  <option value="LinkedIn Post">LinkedIn Post</option>
-                  <option value="LinkedIn Message">LinkedIn Message</option>
-                  <option value="Email">Email</option>
-                  <option value="Phone Call">Phone Call</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label>Date</label>
-                <input
-                  type="date"
-                  value={newCommunication.date}
-                  onChange={(e) => setNewCommunication({ ...newCommunication, date: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label>Description</label>
-                <textarea
-                  value={newCommunication.description}
-                  onChange={(e) => setNewCommunication({ ...newCommunication, description: e.target.value })}
-                  required
-                />
-              </div>
-              <button type="submit">Log Communication</button>
+              <select
+                name="companyId"
+                value={newCommunication.companyId}
+                onChange={(e) => setNewCommunication({ ...newCommunication, companyId: e.target.value })}
+                required
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company._id} value={company._id}>{company.name}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                name="type"
+                value={newCommunication.type}
+                onChange={(e) => setNewCommunication({ ...newCommunication, type: e.target.value })}
+                placeholder="Communication Type"
+                required
+              />
+              <input
+                type="date"
+                name="date"
+                value={newCommunication.date}
+                onChange={(e) => setNewCommunication({ ...newCommunication, date: e.target.value })}
+                required
+              />
+              <textarea
+                name="description"
+                value={newCommunication.description}
+                onChange={(e) => setNewCommunication({ ...newCommunication, description: e.target.value })}
+                placeholder="Description"
+                required
+              />
+              <button type="submit">Submit</button>
             </form>
           </section>
         )}

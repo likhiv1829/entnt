@@ -36,7 +36,7 @@ router.get('/companies/:id', async (req, res) => {
 
 // Add a new company
 router.post('/companies', async (req, res) => {
-  const { name, location, linkedInProfile, emails, phoneNumbers, comments, communicationPeriodicity } = req.body;
+  const { name, location, linkedInProfile, emails, phoneNumbers, comments, communicationPeriodicity, customRecurrence } = req.body;
 
   // Ensure required fields are provided
   if (!name || !location || !emails) {
@@ -51,7 +51,8 @@ router.post('/companies', async (req, res) => {
       emails,
       phoneNumbers,
       comments,
-      communicationPeriodicity: communicationPeriodicity || 14, // Default to 14 days
+      communicationPeriodicity: communicationPeriodicity || 'Does not repeat', // Default value
+      customRecurrence: customRecurrence || { frequency: 1, unit: 'week', endDate: null, occurrences: 0 }, // Default recurrence
     });
 
     const savedCompany = await newCompany.save();
@@ -64,7 +65,7 @@ router.post('/companies', async (req, res) => {
 // Update an existing company (e.g., adding communication details)
 router.put('/companies/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, location, linkedInProfile, emails, phoneNumbers, comments, communicationPeriodicity } = req.body;
+  const { name, location, linkedInProfile, emails, phoneNumbers, comments, communicationPeriodicity, customRecurrence } = req.body;
 
   // Validate company ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -85,6 +86,7 @@ router.put('/companies/:id', async (req, res) => {
     company.phoneNumbers = phoneNumbers || company.phoneNumbers;
     company.comments = comments || company.comments;
     company.communicationPeriodicity = communicationPeriodicity || company.communicationPeriodicity;
+    company.customRecurrence = customRecurrence || company.customRecurrence;
 
     const updatedCompany = await company.save();
     res.status(200).json(updatedCompany);
@@ -155,6 +157,8 @@ router.put('/companies/:companyId/communications/:commId', async (req, res) => {
     res.status(500).json({ error: 'Failed to update communication.' });
   }
 });
+
+// Delete a company
 router.delete('/companies/:id', async (req, res) => {
   const { id } = req.params;
 

@@ -21,6 +21,32 @@ const Dashboard = () => {
     return "upcoming"; // For future communications
   };
 
+  // Add logic for handling periodicity-based communications (e.g., weekly, custom recurrence)
+  const handleRecurringCommunications = (company) => {
+    const now = new Date();
+    const recurringEvents = [];
+    company.communications.forEach((comm) => {
+      if (comm.communicationPeriodicity === "weekly") {
+        // Add weekly recurring events
+        let recurrenceDate = new Date(comm.date);
+        recurrenceDate.setHours(0, 0, 0, 0); // Reset time to avoid conflicts with date
+        while (recurrenceDate <= now) {
+          recurrenceDate.setDate(recurrenceDate.getDate() + 7); // Add 7 days for weekly recurrence
+          recurringEvents.push({
+            ...comm,
+            date: recurrenceDate.toISOString(),
+            status: comm.status,
+          });
+        }
+      }
+      // Handle custom recurrence based on the customRecurrence field
+      if (comm.communicationPeriodicity === "Custom..." && comm.customRecurrence) {
+        // Handle custom logic here
+      }
+    });
+    return recurringEvents;
+  };
+
   useEffect(() => {
     const uniqueEvents = [];
     const seenKeys = new Set();
@@ -29,7 +55,10 @@ const Dashboard = () => {
 
     companies?.forEach((company) => {
       if (company?.communications) {
-        company.communications.forEach((comm) => {
+        const recurringEvents = handleRecurringCommunications(company); // Get recurring communications
+        const allCommunications = [...company.communications, ...recurringEvents];
+
+        allCommunications.forEach((comm) => {
           const uniqueKey = `${comm.type}-${comm.date}-${comm.description}`;
 
           if (!seenKeys.has(uniqueKey)) {
@@ -282,9 +311,11 @@ const Dashboard = () => {
                       <td>{comm.description}</td>
                       <td>
                         {comm.status !== "completed" && getCommunicationStatus(comm.date) === "overdue" ? (
-                          <button onClick={() => handleMarkAsCompleted(selectedCompanyId, index)}>Mark as Complete</button>
+                          <button onClick={() => handleMarkAsCompleted(selectedCompanyId, index)}>
+                            Mark as Complete
+                          </button>
                         ) : (
-                          comm.status === "completed" && <span>Completed</span>
+                          <span>Completed</span>
                         )}
                       </td>
                     </tr>
@@ -292,9 +323,9 @@ const Dashboard = () => {
                 </tbody>
               </table>
             ) : (
-              <p>No communications done yet</p>
+              <p>No communications logged.</p>
             )}
-            <button type="button" onClick={() => setShowModal(false)}>Close</button>
+            <button onClick={() => setShowModal(false)}>Close</button>
           </div>
         </div>
       )}
